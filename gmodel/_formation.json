@@ -1,0 +1,49 @@
+{
+  "formations": {
+    "Absheron": {
+      "Surakhany": {
+        "abbr": "SUR",
+        "color": "sandybrown"
+      },
+      "Sabunchi": {
+        "abbr": "SAB",
+        "color": "peachpuff"
+      },
+      "Balakhany": {
+        "abbr": "B",
+        "color": "bisque",
+        "hatch": "..",
+        "V": {"color": ""},
+        "VI": {"color": ""},
+        "VII": {"color": ""},
+        "VIII": {"color": ""},
+        "IX": {"color": "blanchedalmond"},
+        "X": {"color": "papayawhip"}
+      },
+      "Fasila": {
+        "abbr": "FS",
+        "color": "",
+        "hatch": "..",
+        "B": {"color": "moccasin"},
+        "C": {"color": "wheat"},
+        "D": {"color": "oldlace"}
+      },
+      "Kirmaku Ustu Gilli": {
+        "abbr": "NKG"
+      },
+      "Kirmaku Ustu Gumlu": {
+        "abbr": "NKP"
+      },
+      "Kirmaku": {
+        "abbr": "KS"
+      },
+      "Kirmaku Alti": {
+        "abbr": "PK"
+      },
+      "Kala": {
+        "abbr": "KaS"
+      }
+    },
+    "Garadagh": {}
+  }
+}

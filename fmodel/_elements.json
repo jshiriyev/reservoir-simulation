@@ -1,0 +1,112 @@
+{
+	"air" : {
+		"name":	"air",
+		"moleweight":	28.96,
+		"Tcritical": {
+			"SI":	-140.52,
+			"FU": -220.94
+		},
+		"Pcritical": {
+			"SI": 3785800.0,
+			"FU": 549.08
+		}
+	},
+
+	"methane" : {
+		"name":	"methane",
+		"symb":	"CH4",
+		"moleweight":	16.04,
+		"Tcritical": {
+			"SI":	-82.6,
+			"FU": -117
+		},
+		"Pcritical": {
+			"SI": 4650000.0,
+			"FU": 673.3
+		}
+	},
+
+	"ethane" : {
+		"name":	"ethane",
+		"symb":	"C2H6",
+		"moleweight":	30.07,
+		"Tcritical": {
+			"SI":	32.2,
+			"FU": 90.0
+		},
+		"Pcritical": {
+			"SI": 4890000.0,
+			"FU": 708.0
+		}
+	},
+
+	"propane" : {
+		"name":	"propane",
+		"symb":	"C3H8",
+		"moleweight":	44.1,
+		"Tcritical": {
+			"SI":	96.7,
+			"FU": 206.1
+		},
+		"Pcritical": {
+			"SI": 4260000.0,
+			"FU": 617.4
+		}
+	},
+
+	"n-butane": {
+		"name":	"n-butane",
+		"symb":	"n-C4H10",
+		"moleweight":	58.12,
+		"Tcritical": {
+			"SI":	152.0,
+			"FU": 305.6
+		},
+		"Pcritical": {
+			"SI": 3800000.0,
+			"FU": 550.4
+		}
+	},
+
+	"n-pentane": {
+		"name":	"n-pentane",
+		"symb":	"n-C5H12",
+		"moleweight":	72.15,
+		"Tcritical": {
+			"SI":	100,
+			"FU": 100
+		},
+		"Pcritical": {
+			"SI": 100,
+			"FU": 100
+		}
+	},
+
+	"n-hexane": {
+		"name":	"n-hexane",
+		"symb": "n-C6H14",
+		"moleweight":	86.18,
+		"Tcritical": {
+			"SI":	100,
+			"FU": 100
+		},
+		"Pcritical": {
+			"SI": 100,
+			"FU": 100
+		}
+	},
+
+	"hydrogen-sulfide": {
+		"name":	"hydrogen sulfide",
+		"symb": "H2S",
+		"moleweight":	34.1,
+		"Tcritical": {
+			"SI":	100,
+			"FU": 100
+		},
+		"Pcritical": {
+			"SI": 100,
+			"FU": 100
+		}
+	}
+}
