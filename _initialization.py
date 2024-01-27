@@ -2,6 +2,8 @@ import numpy
 
 class ResInit():
 
+	patm = 14.7
+
 	def __init__(self,DWOC,DGOC,gradw=0.433,grado=0.346,gradg=0.043,peow=0,peog=0):
 		"""
 		DWOC 	: Depth of Water-Oil-Contact
@@ -40,7 +42,7 @@ class ResInit():
 	@property
 	def pwwoc(self):
 		"""water pressure at water-oil-contact"""
-		return 14.7+self.gradw*self.DWOC
+		return self.patm+self.gradw*self.DWOC
 
 	@property
 	def pwgoc(self):
@@ -59,38 +61,47 @@ class ResInit():
 
 	@property
 	def pggoc(self):
+		"""gas pressure at gas-oil-contact"""
 		return self.gaspressure(self.DGOC)
 
 	@property
-	def FWL(self):
+	def fwl(self):
 		"""free-water-level"""
 		return self.DWOC+self.peow/(self.gradw-self.grado)
 
 	def saturations(self,depth,pcow,pcog=None,pcgw=None):
 		"""
-		Zone1 	: below WOC; water
-		Zone2 	: WOC to GOC; water and oil
-		Zone3-a : GOC to transition; liquid and gas
-		Zone3-b : above transition; water and gas
+		Saturation values are calculated at any depth values
 
+		depth 	: depth where to calculate saturation values
 		pcow 	: oil-water capillary pressure model
 		pcog 	: oil-gas capillary pressure model
 		pcgw	: gas-water capillary pressure model
+		
+		returns water, oil and gas saturation values.
+
 		"""
 
-		depth = numpy.array(depth).flatten()
+		depth = numpy.asarray(depth)
 
 		Sw = numpy.ones(depth.shape)
 		So = numpy.zeros(depth.shape)
 		Sg = numpy.zeros(depth.shape)
 
-		zone1 = depth>=self.DWOC
 		zone2 = numpy.logical_and(depth<self.DWOC,depth>=self.DGOC)
 		zone3 = depth<self.DGOC
 
-		Sw2,So2 = self._water_oil_zone(depth[zone2],pcow)
-		Sw3a,So3a,Sg3a = self._three_phase_zone(depth[zone3],pcow,pcog)
-		Sw3b,Sg3b = self._water_gas_zone(depth[zone3],pcgw)
+		Sw2,So2 = self.saturations_water_oil_zone(
+			depth[zone2],pcow
+		)
+
+		Sw3a,So3a,Sg3a = self.saturations_three_phase_zone(
+			depth[zone3],pcow,pcog
+		)
+
+		Sw3b,Sg3b = self.saturations_water_gas_zone(
+			depth[zone3],pcgw
+		)
 
 		Sw3 = numpy.zeros(Sw3a.shape)
 		So3 = numpy.zeros(So3a.shape)
@@ -114,7 +125,18 @@ class ResInit():
 
 		return Sw,So,Sg
 
-	def _water_oil_zone(self,depth,pcow):
+	def saturations_water_oil_zone(self,depth,pcow):
+		"""Saturation values are calculated assuming that
+		the existing phases are water and oil.
+		
+		depth 	: depth where to calculate saturation values
+		pcow 	: oil-water capillary pressure model
+
+		returns water and oil saturation values
+
+		"""
+
+		depth = numpy.asarray(depth)
 
 		pw = self.waterpressure(depth)
 		po = self.oilpressure(depth)
@@ -123,7 +145,19 @@ class ResInit():
 
 		return Sw,1-Sw
 
-	def _three_phase_zone(self,depth,pcow,pcog):
+	def saturations_three_phase_zone(self,depth,pcow,pcog):
+		"""saturation values are calculated assuming that
+		there are three existing phases: water, oil, and gas.
+
+		depth 	: depth where to calculate saturation values
+		pcow 	: oil-water capillary pressure model
+		pcog 	: oil-gas capillary pressure model
+
+		returns water, oil, and gas saturation values.
+
+		"""
+
+		depth = numpy.asarray(depth)
 
 		pw = self.waterpressure(depth)
 		po = self.oilpressure(depth)
@@ -134,7 +168,18 @@ class ResInit():
 
 		return Sw,Sl-Sw,1-Sl
 
-	def _water_gas_zone(self,depth,pcgw):
+	def saturations_water_gas_zone(self,depth,pcgw):
+		"""saturation values are calculated assuming that
+		there are two phases: water and gas.
+		
+		depth 	: depth where to calculate saturation values
+		pcgw	: gas-water capillary pressure model
+
+		returns water and gas saturation values.
+		
+		"""
+
+		depth = numpy.asarray(depth)
 
 		pw = self.waterpressure(depth)
 		pg = self.gaspressure(depth)

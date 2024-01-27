@@ -2,48 +2,71 @@ import numpy
 
 class BrooksCorey():
 
-    def __init__(self,irreducible=0,residual=0,Lambda=2,Pcentry=4.5):
+    def __init__(self,irreducible=0,residual=0,lamda=2,entry=4.5):
         """
-        irreducible     : Irreducible water saturation
-        residual        : Residual oil saturation
+        BrooksCorey capillary  pressure model
 
-        Lambda          : Empirical model constant
-        Pcentry         : Capillary entry pressure
+        irreducible     : Irreducible saturation
+        residual        : Residual saturation
+
+        lamda           : Empirical model constant
+        entry           : Capillary entry pressure
+
         """
 
         self.irreducible = irreducible
         self.residual = residual
 
-        self.Lambda = Lambda
-        self.Pcentry = Pcentry
+        self.lamda = lamda
+        self.entry = entry
 
-    def drainage(self,watersaturation):
-        """Drainage calculation, capillary pressure from saturation."""
+    def drainage(self,saturation):
+        """Calculates capillary pressure values for drainage
+        scenario, forward calculations."""
 
-        saturation = (watersaturation-self.irreducible)/(1-self.irreducible)
+        saturation = numpy.asarray(saturation)
 
-        return self.Pcentry*saturation**(-1/self.Lambda)
+        Sstar = (saturation-self.irreducible)/(1-self.irreducible)
+
+        return self.entry*Sstar**(-1/self.lamda)
 
     def idrainage(self,cappres):
-        """Inverse drainage calculation, saturation from capillary pressure."""
+        """Calculates saturation values from capillary pressure for
+        drainage scenario, inverse calculations.
+        
+        cappres     : capillary pressure values
 
-        saturation = (self.Pcentry/cappres)**(self.Lambda)
+        """
 
-        return self.irreducible+saturation*(1-self.irreducible)
+        cappres = numpy.asarray(cappres)
 
-    def imbibition(self,watersaturation):
-        """Imbibition calculation, capillary pressure from saturation."""
+        Sstar = (self.entry/cappres)**(self.lamda)
 
-        saturation = (watersaturation-self.irreducible)/(1-self.irreducible-self.residual)
+        return self.irreducible+Sstar*(1-self.irreducible)
 
-        return self.Pcentry*(saturation**(-1/self.Lambda)-1)
+    def imbibition(self,saturation):
+        """Calculates capillary pressure values for imbibition scenario,
+        forward calculations."""
+
+        saturation = numpy.asarray(saturation)
+
+        Se = (saturation-self.irreducible)/(1-self.irreducible-self.residual)
+
+        return self.entry*(Se**(-1/self.lamda)-1)
 
     def iimbibition(self,cappres):
-        """Inverse imbibition calculation, saturation from capillary pressure."""
+        """Calculates saturation values for imbibition scenario,
+        inverse calculations.
 
-        saturation = (cappres/self.Pcentry+1)**(-self.Lambda)
+        cappres     : capillary pressure values
 
-        return self.irreducible+saturation*(1-self.irreducible-self.residual)
+        """
+
+        cappres = numpy.asarray(cappres)
+
+        Se = (cappres/self.entry+1)**(-self.lamda)
+
+        return self.irreducible+Se*(1-self.irreducible-self.residual)
 
 class VanGenuchten():
 
@@ -56,9 +79,9 @@ class VanGenuchten():
 
         self.gamma = gamma
 
-    def imbibition(self,watersaturation):
+    def imbibition(self,sw):
 
-        saturation = (watersaturation-self.irreducible)/(1-self.irreducible-self.residual)
+        saturation = (sw-self.irreducible)/(1-self.irreducible-self.residual)
 
         return 1/self.gamma*(saturation**(-1/self.m)-1)**(1/self.n)
 
@@ -94,7 +117,7 @@ class JFunction():
 
         return jfunction*termIT/termPS
 
-def ScanCurves(watersaturation,hyst,cappres,epspc=0,residual=0):
+def ScanCurves(sw,hyst,cappres,epspc=0,residual=0):
     """Initialization of a reservoir is assumed to occur by primary drainage (oleic
     displaces aqueous phase) by migration from a source rock.
 
@@ -107,16 +130,16 @@ def ScanCurves(watersaturation,hyst,cappres,epspc=0,residual=0):
     A capillary scanning curve is a weighted average of the imbibition
     and drainage capillary pressure curves."""
 
-    conds = watersaturation<=hyst
+    conds = sw<=hyst
 
-    cappres = numpy.zeros(watersaturation.shape)
+    cappres = numpy.zeros(sw.shape)
 
-    drainage = cappres.drainage(watersaturation)
+    drainage = cappres.drainage(sw)
 
-    imbibition = cappres.imbibition(watersaturation)
+    imbibition = cappres.imbibition(sw)
 
     Av = 1-residual-hyst
-    Bv = watersaturation-hyst
+    Bv = sw-hyst
 
     fv = (Av+epspc)/(Bv+epspc)*Bv/Av
 
@@ -128,7 +151,7 @@ def ScanCurves(watersaturation,hyst,cappres,epspc=0,residual=0):
 
 if __name__ == "__main__":
 
-    cappres = BrooksCorey(0.1,0.4,Lambda=2,Pcentry=3.5)
+    cappres = BrooksCorey(0.1,0.4,lamda=2,entry=3.5)
 
     pcDm = cappres.drainage(0.3)
     pcIm = cappres.imbibition(0.3)
