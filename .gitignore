@@ -1,0 +1,15 @@
+# Data
+*.csv
+*.db
+*.inc
+*.xlsx
+
+# Documentation
+*.html
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.ipynb_checkpoints
