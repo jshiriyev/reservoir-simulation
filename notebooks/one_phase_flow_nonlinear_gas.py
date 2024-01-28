@@ -38,11 +38,12 @@ for i in range(grids.numtot):
 		J[i,i] = 2*Tm[i,1]
 		Q[i,0] = Pd*2*Tm[i,1]
 
-P = OnePhase.picardsolver(grids,dt,Nt,T,J,Q)
+Pnewton = OnePhase.newtonsolver(grids,dt,Nt,T,J,Q)
+Ppicard = OnePhase.picardsolver(grids,dt,Nt,T,J,Q)
 
 plt.scatter(grids.xaxis,grids.pressure_initial)
-plt.scatter(grids.xaxis,P[:,0])
-plt.scatter(grids.xaxis,P[:,1])
-plt.scatter(grids.xaxis,P[:,2])
+plt.scatter(grids.xaxis,Pnewton[:,0])
+plt.scatter(grids.xaxis,Pnewton[:,1])
+plt.scatter(grids.xaxis,Pnewton[:,2])
 
 plt.show()

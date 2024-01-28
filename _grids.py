@@ -346,6 +346,80 @@ class HexaHedron():
 
 		return area
 
+class OneDimCuboid():
+
+    def __init__(self,length,numtot,csa):
+
+        self.length = length
+
+        self.numtot = numtot
+
+        self.csa = csa
+
+        self.num = (numtot,1,1)
+
+        self._index()
+
+        self._size()
+
+        self._area()
+
+    def _index(self):
+
+        idx = numpy.arange(self.numtot)
+
+        self.index = numpy.tile(idx,(7,1)).T
+
+        self.index[idx.reshape(-1,self.num[0])[:,1:].ravel(),1] -= 1
+        self.index[idx.reshape(-1,self.num[0])[:,:-1].ravel(),2] += 1
+        self.index[idx.reshape(self.num[2],-1)[:,self.num[0]:],3] -= self.num[0]
+        self.index[idx.reshape(self.num[2],-1)[:,:-self.num[0]],4] += self.num[0]
+        self.index[idx.reshape(self.num[2],-1)[1:,:],5] -= self.num[0]*self.num[1]
+        self.index[idx.reshape(self.num[2],-1)[:-1,:],6] += self.num[0]*self.num[1]
+
+    def _size(self):
+
+        self.size = numpy.zeros((self.numtot,3))
+
+        self.size[:,0] = self.length/self.num[0]
+        self.size[:,1] = self.csa
+        self.size[:,2] = 1
+
+        self.xaxis = numpy.linspace(0,self.length,self.numtot,endpoint=False)+self.size[:,0]/2
+
+    def _area(self):
+
+        self.area = numpy.zeros((self.numtot,6))
+
+        self.area[:,0] = self.size[:,1]*self.size[:,2]
+        self.area[:,1] = self.size[:,1]*self.size[:,2]
+        self.area[:,2] = self.size[:,2]*self.size[:,0]
+        self.area[:,3] = self.size[:,2]*self.size[:,0]
+        self.area[:,4] = self.size[:,0]*self.size[:,1]
+        self.area[:,5] = self.size[:,0]*self.size[:,1]
+
+    def set_permeability(self,permeability,homogeneous=True,isotropic=True):
+
+        self.permeability = numpy.zeros((self.numtot,3))
+
+        if homogeneous and isotropic:
+            
+            self.permeability[:] = permeability
+
+        elif homogeneous and not isotropic:
+
+            self.permeability[:] = permeability
+
+        elif not homogeneous and isotropic:
+
+            self.permeability[:,0] = permeability
+            self.permeability[:,1] = permeability
+            self.permeability[:,2] = permeability
+
+        else:
+
+            self.permeability[:] = permeability
+
 if __name__ == "__main__":
 
 	cells = Hexahedron(

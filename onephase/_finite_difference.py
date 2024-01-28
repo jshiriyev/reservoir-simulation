@@ -13,7 +13,152 @@ from scipy.sparse.linalg import spsolve as sps
 
 # It should include Slightly Compressible and Compressible Flows
 
-class OnePhaseImplicit():
+def TransMatrix1D(grids,TransVector1D):
+
+    T = np.zeros((grids.numtot,grids.numtot))
+
+    for i in range(grids.numtot):
+
+        if i>0:
+            T[i,i-1] = -TransVector1D[i,0]
+            T[i,i] += TransVector1D[i,0]
+
+        if i<grids.numtot-1:
+            T[i,i+1] = -TransVector1D[i,1]
+            T[i,i] += TransVector1D[i,1]
+
+    return T
+
+class Implicit1D():
+
+    @staticmethod
+    def solve(length,time,pinit,pright,eta,ngrids,nsteps):
+        """
+        lenght  : length of core sample
+        time    : time at which to calculate pressure
+        pinit   : initial pressure
+        pright  : constant pressure boundary implemented at right hand side
+        eta     : hydraulic diffusivity
+        ngrids  : number of pressure calculation points
+        nsteps  : number of time steps to be used in finite difference solution
+        """
+
+        x = np.arange(length/ngrids/2,length,length/ngrids)
+
+        T = CoreFlow.tondimtime(time,eta,length)
+
+        P = CoreFlow.ndimpressure(ngrids,T/nsteps,nsteps)
+        
+        P = CoreFlow.todimpressure(P,pinit,pright)
+
+        return x,P
+    
+    @staticmethod
+    def tondimx(x,length):
+        """Converts dimensional x to non-dimensional x."""
+
+        return x/length
+
+    @staticmethod
+    def todimx(x,length):
+        """Converts non-dimensional x to dimensional x."""
+
+        return x*length
+
+    @staticmethod
+    def tondimtime(time,eta,length):
+        """Converts dimensional time to non-dimensional time."""
+
+        return eta*time/length**2
+
+    @staticmethod
+    def todimtime(time,eta,length):
+        """Converts non-dimensional time to dimensional time."""
+        
+        return time*length**2/eta
+
+    @staticmethod
+    def tondimpressure(pressure,pinit,pright):
+        """Converts dimensional pressure to non-dimensional pressure."""
+
+        return (pressure-pright)/(pinit-pright)
+
+    @staticmethod
+    def todimpressure(pressure,pinit,pright):
+        """Converts non-dimensional pressure to dimensional pressure."""
+
+        return pressure*(pinit-pright)+pright
+
+    @staticmethod
+    def ndimpressure(ngrids:int,deltat:int,nsteps:int):
+        """Calculates the non-dimensional pressure with finite difference method.
+
+        """
+
+        shape = (ngrids,ngrids)
+
+        deltax = 1/ngrids
+
+        Gmatrix = csr(shape)
+
+        indices = np.array([i for i in range(ngrids-1)],dtype="int16")
+
+        coeffis = [deltat/deltax**2 for _ in range(ngrids-1)]
+
+        Gmatrix -= csr((coeffis,(indices,indices+1)),shape=shape)
+        Gmatrix += csr((coeffis,(indices,indices)),shape=shape)
+        
+        Gmatrix -= csr((coeffis,(indices+1,indices)),shape=shape)
+        Gmatrix += csr((coeffis,(indices+1,indices+1)),shape=shape)
+
+        Gmatrix += csr(([2*deltat/deltax**2],([ngrids-1],[ngrids-1])),shape=shape)
+
+        Gmatrix += diags([1 for _ in range(ngrids)],shape=shape)
+
+        pinit = np.ones((ngrids,))
+
+        pn = pinit
+
+        for n in range(nsteps):
+
+            pn = sps(Gmatrix,pn)
+
+        return pn
+
+def TransVector3D(grids):
+    
+    dx_m = (grids.size[:,0]+grids.size[grids.index[:,1],0])/2
+    dx_p = (grids.size[:,0]+grids.size[grids.index[:,2],0])/2
+    dy_m = (grids.size[:,1]+grids.size[grids.index[:,3],1])/2
+    dy_p = (grids.size[:,1]+grids.size[grids.index[:,4],1])/2
+    dz_m = (grids.size[:,2]+grids.size[grids.index[:,5],2])/2
+    dz_p = (grids.size[:,2]+grids.size[grids.index[:,6],2])/2
+
+    kx_m = (2*dx_m)/(grids.size[:,0]/grids.permeability[:,0]+
+                     grids.size[grids.index[:,1],0]/grids.permeability[grids.index[:,1],0])
+    kx_p = (2*dx_p)/(grids.size[:,0]/grids.permeability[:,0]+
+                     grids.size[grids.index[:,2],0]/grids.permeability[grids.index[:,2],0])
+    ky_m = (2*dy_m)/(grids.size[:,1]/grids.permeability[:,1]+
+                     grids.size[grids.index[:,3],1]/grids.permeability[grids.index[:,3],1])
+    ky_p = (2*dy_p)/(grids.size[:,1]/grids.permeability[:,1]+
+                     grids.size[grids.index[:,4],1]/grids.permeability[grids.index[:,4],1])
+    kz_m = (2*dz_m)/(grids.size[:,2]/grids.permeability[:,2]+
+                     grids.size[grids.index[:,5],2]/grids.permeability[grids.index[:,5],2])
+    kz_p = (2*dz_p)/(grids.size[:,2]/grids.permeability[:,2]+
+                     grids.size[grids.index[:,6],2]/grids.permeability[grids.index[:,6],2])
+
+    transmissibility = np.zeros((grids.numtot,6))
+
+    transmissibility[:,0] = (kx_m*grids.area[:,0])/(grids.viscosity*dx_m)
+    transmissibility[:,1] = (kx_p*grids.area[:,1])/(grids.viscosity*dx_p)
+    transmissibility[:,2] = (ky_m*grids.area[:,2])/(grids.viscosity*dy_m)
+    transmissibility[:,3] = (ky_p*grids.area[:,3])/(grids.viscosity*dy_p)
+    transmissibility[:,4] = (kz_m*grids.area[:,4])/(grids.viscosity*dz_m)
+    transmissibility[:,5] = (kz_p*grids.area[:,5])/(grids.viscosity*dz_p)
+
+    return transmissibility
+
+class Implicit3D():
     
     """
     This class is supposed to generate regular grids in cartesian
@@ -451,6 +596,47 @@ class OnePhaseImplicit():
             array[:,j] = P.flatten()
 
         return array
+
+def NewtonSolver(grids,timestep,timesteps,T,J,Q):
+
+    array = np.zeros((grids.numtot,timesteps))
+
+    P = grids.pressure_initial
+
+    for j in range(timesteps):
+
+        Pk = P.copy()
+
+        error = 1
+
+        k = 1
+
+        while error>1e-6:
+
+            A = np.diag(100/Pk.flatten())
+
+            F = -np.matmul(T+J+A,Pk)+np.matmul(A,P)+Q
+
+            error = np.linalg.norm(F.flatten(),2)
+
+            JACOB = -(T+J)+np.matmul(-A,np.diag(P.flatten()/Pk.flatten()))
+
+            Pk += np.linalg.solve(JACOB,-F)
+
+            print(f"iteration #{k}: {error = }")
+            print(f"{Pk}\n")#{F}\n
+
+            k += 1
+
+        P = Pk.copy()
+
+        array[:,j] = P.flatten()
+
+    return array
+
+def PicardSolver(grids,timestep,timesteps,T,J,Q):
+
+    pass
 
 if __name__ == "__main__":
 
