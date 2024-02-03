@@ -2,265 +2,149 @@ import numpy
 
 from scipy.special import erfc
 
-class Steady():
+class OnePhase():
 
-	def __init__(self,flowRate):
-
-        self.flowRate = flowRate
-
-    def incompressible(self,xvals,permeability,width,height,viscosity):
-
-        coeff = (permeability*width*height)/viscosity
-
-        return self.flowRate/coeff*xvals
-
-class CoreFlow():
-
-    def __init__(self,length:float,pinit:float):
+    def __init__(self,length:float,k:float,phi:float,mu:float,ct:float):
         """
         length  : length of the porous media, ft
-        pinit   : initial pressure, psi
+
+        k       : permeability, milli-Darcy
+        phi     : porosity, non-dimensional
+        mu      : viscosity, centi-poise
+        ct      : total compressibility, 1/psi
+
         """
 
-        self.length,self.pinit = length*0.3048,pinit*6894.76
+        self.length = length*0.3048
 
-    def set_eta(self,k,phi,mu,ct):
-        """
-        k   : permeability, milli-Darcy
-        phi : porosity, non-dimensional
-        mu  : viscosity, centi-poise
-        ct  : total compressibility, 1/psi
-        """
-        k *= 9.869233e-16
-        mu *= 1e-3
-        ct /= 6894.76
+        self.eta = (k*9.869233e-16)/(phi*(ct/6894.76)*(mu*1e-3))
 
-        self.eta = self._eta(k,phi,mu,ct)
-
-    def solve(self,time,ngrids,pright=None,noflux=False):
+    def solve(self,time:float,ngrids:int,pinit:float,pleft:float,pright=None,noflux=False):
         """
-        time    : in hours
+        time    : when to calculate pressures, in hours
         ngrids  : number of pressure calculation points
-        pright  : pressure on the right boundary, psi
-        noflux  : if True, no-flux boundary conditions are implementted on RHS.
+        pinit   : initial pressure, psi
+        pleft   : upstream pressure, psi
+        pright  : downstream pressure, psi
+        noflux  : downstream pressure boundary conditions
+                  True, no-flux boundary condition is implementted
+                  False, constant pressure boundary condition is implemented
+
+        returns x (ft) locations where pressures are calculated and pressure values (psi).
+
         """
 
         time *= 3600
 
-        if not noflux:
-            pright = 101325 if pright is None else pright/6894.76
+        pinit *= 6894.76
 
-        xaxis,Pressure = self._solve(self.length,time,self.pinit,self.eta,ngrids,pright,noflux)
+        pleft *= 6894.76
 
-        return xaxis,Pressure/6894.76
+        xaxis = numpy.arange(self.length/ngrids/2,self.length,self.length/ngrids)
+        
+        X = self.tondimx(xaxis,self.length)
+
+        T = self.tondimtime(time,self.eta,self.length)
+        
+        if not noflux: # constant downstream pressure case
+
+            pright = 101325 if pright is None else pright*6894.76
+
+            ndimPresInit = self.tondimpressure(pinit,pleft,pright)
+            ndimPressure = self.solve_ndimpressure_pconst(X,T,ndimPresInit)
+
+            dimPressure = self.todimpressure(ndimPressure,pleft,pright)
+
+            return xaxis/0.3048,dimPressure/6894.76
+
+        ndimPressure = self.solve_ndimpressure_noflux(X,T)
+        dimPressure = self.todimpressure(ndimPressure,pleft,pinit)
+
+        return xaxis/0.3048,dimPressure/6894.76
 
     @staticmethod
-    def _solve(length,time,pinit,eta,ngrids,pright,noflux):
+    def solve_ndimpressure_pconst(ndimx:numpy.ndarray,ndimtime:float,ndimPressInit:float,terms:int=100):
+        """Calculates the non-dimensional pressure for constant pressure
+        boundary conditions on both sides.
+
+        ndimx           : non-dimensional distance
+        ndimtime        : non-dimensional time
+        ndimPressInit   : non-dimensional pressure at initial pressure conditions
+        terms           : number of terms after which to terminate the summation
+
         """
-        lenght  : length of core sample, meter
-        time    : time at which to calculate pressure, second
-        pinit   : initial pressure, Pascal
-        eta     : hydraulic diffusivity, m2/second
-        ngrids  : number of pressure calculation points
-        pright  : constant pressure boundary implemented at right hand side
-        """
 
-        x = np.arange(length/ngrids/2,length,length/ngrids)
-        
-        X = SinglePhaseLinear._tondimx(x,length)
+        n,psum1,psum2 = 1,numpy.zeros(ndimx.shape),numpy.zeros(ndimx.shape)
 
-        T = SinglePhaseLinear._tondimtime(time,eta,length)
-        
-        if noflux:
-            P = SinglePhaseLinear._ndimpressure_noflux(X,T)
-        else:
-            P = SinglePhaseLinear._ndimpressure_pconst(X,T)
-        
-        P = SinglePhaseLinear._todimpressure(P,pinit,pright)
+        while n<=terms:
 
-        return x,P
+            sinterm1 = numpy.sin(n*numpy.pi*ndimx)
+            sinterm2 = numpy.sin(n*numpy.pi*(ndimx-1))
+
+            expterm = numpy.exp(-n**2*numpy.pi**2*ndimtime)
+            
+            psum1 += (-1)**n/n*sinterm1*expterm
+            psum2 += (-1)**n/n*sinterm2*expterm
+
+            n += 1
+
+        return 1-ndimx-ndimPressInit*2/numpy.pi*psum1-(1-ndimPressInit)*2/numpy.pi*psum2
 
     @staticmethod
-    def _eta(k,phi,ct,mu):
+    def solve_ndimpressure_noflux(ndimx:numpy.ndarray,ndimtime:float,terms:int=100):
+        """Calculates the non-dimensional pressure for constant pressure at upstream
+        and no-flux at downstream.
+
+        ndimx      : non-dimensional x
+        ndimtime   : non-dimensional time
+        terms      : number of terms after which to terminate the summation
+
         """
-        k   : permeability, meter-square
-        phi : porosity, non-dimensional
-        mu  : viscosity, Pa.second
-        ct  : total compressibility, 1/Pascal
-        """
-        return k/(phi*ct*mu)
+
+        n,psum = 0,numpy.zeros(ndimx.shape)
+
+        while n<terms:
+            
+            expterm = numpy.exp(-(2*n+1)**2/4*numpy.pi**2*ndimtime)
+            sinterm = numpy.sin((2*n+1)*numpy.pi/2*ndimx)
+            
+            # psum += (-1)**n/(2*n+1)*expterm*costerm
+            psum += 1/(2*n+1)*expterm*sinterm
+            # psum += 4/((2*n+1)*numpy.pi)*expterm*costerm
+
+            n += 1
+
+        return 1-4/numpy.pi*psum
     
     @staticmethod
-    def _tondimx(dimx,length):
+    def tondimx(dimx,length):
         """Converts dimensional x to non-dimensional x."""
         return dimx/length
 
     @staticmethod
-    def _todimx(ndimx,length):
+    def todimx(ndimx,length):
         """Converts non-dimensional x to dimensional x."""
         return ndimx*length
 
     @staticmethod
-    def _tondimtime(dimtime,eta,length):
+    def tondimtime(dimtime,eta,length):
         """Converts dimensional time to non-dimensional time."""
         return eta*dimtime/length**2
 
     @staticmethod
-    def _todimtime(ndimtime,eta,length):
+    def todimtime(ndimtime,eta,length):
         """Converts non-dimensional time to dimensional time."""
         return ndimtime*length**2/eta
 
     @staticmethod
-    def _tondimpressure(dimpressure,pinit,pright):
+    def tondimpressure(dimpressure,pb1,pb2):
         """Converts dimensional pressure to non-dimensional pressure."""
-        return (dimpressure-pright)/(pinit-pright)
+        return (dimpressure-pb2)/(pb1-pb2)
 
     @staticmethod
-    def _todimpressure(ndimpressure,pinit,pright):
+    def todimpressure(ndimpressure,pb1,pb2):
         """Converts non-dimensional pressure to dimensional pressure."""
-        return ndimpressure*(pinit-pright)+pright
-
-    @staticmethod
-    def _ndimpressure_pconst(ndimx:np.ndarray,ndimtime:float,terms:int=100):
-        """Calculates the non-dimensional pressure for constant pressure
-        boundary conditions on both sides.
-
-        ndimx      : non-dimensional x
-        ndimtime   : non-dimensional time
-        terms      : number of terms after which to terminate the summation
-
-        """
-
-        psum1 = np.zeros(ndimx.shape)
-        psum2 = np.zeros(ndimx.shape)
-
-        for n in range(1,terms):
-
-            fstterm = (-1)**n/n
-
-            sinterm1 = np.sin(n*np.pi*ndimx)
-            sinterm2 = np.sin(n*np.pi*(ndimx-1))
-
-            expterm = np.exp(-n**2*np.pi**2*ndimtime)
-            
-            psum1 += fstterm*sinterm1*expterm
-            psum2 += fstterm*sinterm2*expterm
-
-        psum1 = psum1*2/np.pi
-        psum2 = psum2*2/np.pi
-
-        pdi = 0.2
-
-        return 1-ndimx-pdi*psum1-(1-pdi)*psum2
-
-    @staticmethod
-    def _ndimpressure_noflux(ndimx:np.ndarray,ndimtime:float,terms:int=100):
-        """Calculates the non-dimensional pressure for constant pressure on left side
-        and no-flux on right side of sample.
-
-        ndimx      : non-dimensional x
-        ndimtime   : non-dimensional time
-        terms      : number of terms after which to terminate the summation
-
-        """
-
-        psum = np.zeros(ndimx.shape)
-
-        for n in range(terms):
-
-            fstterm = (-1)**n/(2*n+1)
-            
-            expterm = np.exp(-(2*n+1)**2*np.pi**2*ndimtime/4)
-            costerm = np.cos((2*n+1)*np.pi/2*ndimx)
-            
-            psum += fstterm*expterm*costerm
-
-        return psum*4/np.pi
-
-class CoreFlow_v2(): # will be DEPRECIATED
-
-    @staticmethod
-    def solve(length,time,pinit,pright,eta,ngrids):
-        """
-        lenght  : length of core sample
-        time    : time at which to calculate pressure
-        pinit   : initial pressure
-        pright  : constant pressure boundary implemented at right hand side
-        eta     : hydraulic diffusivity
-        ngrids  : number of pressure calculation points
-        """
-
-        x = np.arange(length/ngrids/2,length,length/ngrids)
-        
-        X = CoreFlow.tondimx(x,length)
-
-        T = CoreFlow.tondimtime(time,eta,length)
-        
-        P = CoreFlow.ndimpressure(X,T)
-        
-        P = CoreFlow.todimpressure(P,pinit,pright)
-
-        return x,P
-    
-    @staticmethod
-    def tondimx(x,length):
-        """Converts dimensional x to non-dimensional x."""
-
-        return x/length
-
-    @staticmethod
-    def todimx(x,length):
-        """Converts non-dimensional x to dimensional x."""
-
-        return x*length
-
-    @staticmethod
-    def tondimtime(time,eta,length):
-        """Converts dimensional time to non-dimensional time."""
-
-        return eta*time/length**2
-
-    @staticmethod
-    def todimtime(time,eta,length):
-        """Converts non-dimensional time to dimensional time."""
-        
-        return time*length**2/eta
-
-    @staticmethod
-    def tondimpressure(pressure,pinit,pright):
-        """Converts dimensional pressure to non-dimensional pressure."""
-
-        return (pressure-pright)/(pinit-pright)
-
-    @staticmethod
-    def todimpressure(pressure,pinit,pright):
-        """Converts non-dimensional pressure to dimensional pressure."""
-
-        return pressure*(pinit-pright)+pright
-
-    @staticmethod
-    def ndimpressure(ndimx:np.ndarray,ndimtime:float,terms:int=100):
-        """Calculates the non-dimensional pressure given with equation 5 on the word document.
-
-        ndimx      : non-dimensional x
-        ndimtime   : non-dimensional time
-        terms      : number of terms after which to terminate the summation
-
-        """
-
-        psum = np.zeros(ndimx.shape)
-
-        for n in range(terms):
-
-            fstterm = (-1)**n/(2*n+1)
-            
-            expterm = np.exp(-(2*n+1)**2*np.pi**2*ndimtime/4)
-            costerm = np.cos((2*n+1)*np.pi/2*ndimx)
-            
-            psum += fstterm*expterm*costerm
-
-        return psum*4/np.pi
-
+        return ndimpressure*(pb1-pb2)+pb2
 
 class BuckleyLeverett():
     
@@ -402,7 +286,7 @@ class MiscibleDisplacement():
 
     def obj(XX,v,L):
 
-        data = np.loadtxt('Lecture_08_dispersion.txt',skiprows=1)
+        data = numpy.loadtxt('Lecture_08_dispersion.txt',skiprows=1)
 
         time = data[:,0]*3600   # seconds
 
@@ -410,17 +294,17 @@ class MiscibleDisplacement():
 
         cc0 = data[:,1]         # dimensionless
 
-        return np.sum((cc0-cc0_c)**2)
+        return numpy.sum((cc0-cc0_c)**2)
 
     def concentration(XX,v,L,time):
 
         DL = 10**(-XX)
 
-        term1 = erfc((L-v*time)/(2*np.sqrt(DL*time)))
-        term2 = erfc((L+v*time)/(2*np.sqrt(DL*time)))
+        term1 = erfc((L-v*time)/(2*numpy.sqrt(DL*time)))
+        term2 = erfc((L+v*time)/(2*numpy.sqrt(DL*time)))
 
-        if not np.any(term2):
+        if not numpy.any(term2):
             return 1/2*(term1)
         else:
-            term3 = np.exp(v*L/DL)
+            term3 = numpy.exp(v*L/DL)
             return 1/2*(term1+term2*term3)
