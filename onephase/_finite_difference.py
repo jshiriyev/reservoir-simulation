@@ -3,36 +3,139 @@ import numpy as np
 
 from scipy.sparse import csr_matrix as csr
 from scipy.sparse import diags
-
-from scipy.sparse.linalg import spsolve as sps
-
-# import fluids
-
-# from borepy.items import PorRock
-# from borepy.items import Wells
+from scipy.sparse import identity
+from scipy.sparse import linalg
 
 # It should include Slightly Compressible and Compressible Flows
 
-def TransMatrix1D(grids,TransVector1D):
+def trans_vector1D(grids,fluid):
 
-    T = np.zeros((grids.numtot,grids.numtot))
+    transmissibility = np.zeros((grids.numtot,2))
 
-    for i in range(grids.numtot):
+    transmissibility[:,0] = (grids._perm*grids._area[:,0])/(fluid._viscosity*grids._size.flatten())
+    transmissibility[:,1] = (grids._perm*grids._area[:,1])/(fluid._viscosity*grids._size.flatten())
 
-        if i>0:
-            T[i,i-1] = -TransVector1D[i,0]
-            T[i,i] += TransVector1D[i,0]
+    return transmissibility
 
-        if i<grids.numtot-1:
-            T[i,i+1] = -TransVector1D[i,1]
-            T[i,i] += TransVector1D[i,1]
+def trans_matrix1D(grids,TransVector1D):
+
+    indices = grids.index
+
+    noxmin = ~(indices[:,0]==indices[:,1])
+    noxmax = ~(indices[:,0]==indices[:,2])
+
+    id_noxmin = indices[noxmin,0] #id of grids not at xmin boundary
+    id_noxmax = indices[noxmax,0] #id of grids not at xmax boundary
+
+    idNnoxmin = indices[noxmin,1] #id of xmin neighbors for id_noxmin grids
+    idNnoxmax = indices[noxmax,2] #id of xmax neighbors for id_noxmax grids
+
+    cx_m = TransVector1D[noxmin,0]
+    cx_p = TransVector1D[noxmax,1]
+
+    shape = (grids.numtot,grids.numtot)
+
+    T = csr(shape)
+
+    T -= csr((cx_m,(id_noxmin,idNnoxmin)),shape=shape)
+    T += csr((cx_m,(id_noxmin,id_noxmin)),shape=shape)
+    T -= csr((cx_p,(id_noxmax,idNnoxmax)),shape=shape)
+    T += csr((cx_p,(id_noxmax,id_noxmax)),shape=shape)
+
+    # T = np.zeros((grids.numtot,grids.numtot))
+
+    # for i in range(grids.numtot):
+
+    #     if i>0:
+    #         T[i,i-1] = -TransVector1D[i,0]
+    #         T[i,i] += TransVector1D[i,0]
+
+    #     if i<grids.numtot-1:
+    #         T[i,i+1] = -TransVector1D[i,1]
+    #         T[i,i] += TransVector1D[i,1]
 
     return T
 
-class Implicit1D():
+class ImplicitSolver1D():
+
+    def __init__(self,grids,fluid,ct):
+        """ct in 1/psi"""
+
+        self.grids = grids
+        self.fluid = fluid
+
+        self._ct = ct/6894.76
+
+    def initialize(self,pressure):
+        """Initializing the reservoir pressure
+        
+        pressure    : initial pressure in psi
+        """
+        self._pinit = np.ones((self.grids.numtot,1))*pressure*6894.76
+
+    def set_Tvector(self):
+
+        self._trans = trans_vector1D(self.grids,self.fluid)
+
+    def set_Tmatrix(self):
+
+        self._T = trans_matrix1D(self.grids,self._trans)
+
+    def set_Amatrix(self,dt):
+        
+        self._dt = dt*(24*60*60)
+
+        coeff = (self.grids._area[:,0].reshape((-1,1))*self.grids._size*self.grids._poro.reshape((-1,1)))/(self._dt)
+
+        A = csr((coeff[:,0],(self.grids.index[:,0],self.grids.index[:,0])),shape=self.shape)
+
+        self._A = A
+
+        self._Act = self._A*self._ct
+
+    def set_Jmatrix(self):
+
+        coeff = np.asarray(2*self._trans[-1,0]).flatten()
+        index = np.asarray(self.grids.numtot-1).flatten()
+
+        J = csr((coeff,(index,index)),shape=self.shape)
+
+        self._J = J
+
+    def set_Qvector(self,Pbound):
+        """Pbound in psi"""
+
+        shape = (self.grids.numtot,1)
+
+        coeff = np.asarray(2*self._trans[-1,0]*Pbound*6894.76).flatten()
+        index = np.asarray(self.grids.numtot-1).flatten()
+
+        Q = csr((coeff,(index,np.asarray(0).flatten())),shape=shape)
+
+        self._Q = Q
+
+    def solve(self,timesteps):
+
+        P = self._pinit
+
+        LHS = self._Act+self._T+self._J
+        
+        Psol = np.zeros((self.grids.numtot,timesteps))
+        
+        for k in range(timesteps):
+            
+            RHS = csr.dot(self._Act,P)+self._Q
+            
+            P = linalg.spsolve(LHS,RHS)
+            
+            Psol[:,k] = P/6894.76
+
+            P = P.reshape((-1,1))
+
+        return Psol
 
     @staticmethod
-    def solve(length,time,pinit,pright,eta,ngrids,nsteps):
+    def unknown_solve(length,time,pinit,pright,eta,ngrids,nsteps):
         """
         lenght  : length of core sample
         time    : time at which to calculate pressure
@@ -43,15 +146,13 @@ class Implicit1D():
         nsteps  : number of time steps to be used in finite difference solution
         """
 
-        x = np.arange(length/ngrids/2,length,length/ngrids)
-
         T = CoreFlow.tondimtime(time,eta,length)
 
         P = CoreFlow.ndimpressure(ngrids,T/nsteps,nsteps)
         
         P = CoreFlow.todimpressure(P,pinit,pright)
 
-        return x,P
+        return P
     
     @staticmethod
     def tondimx(x,length):
@@ -121,11 +222,43 @@ class Implicit1D():
 
         for n in range(nsteps):
 
-            pn = sps(Gmatrix,pn)
+            pn = linalg.spsolve(Gmatrix,pn)
 
         return pn
 
-def TransVector3D(grids):
+    @property
+    def ct(self):
+        return self._ct*6894.76
+
+    @property
+    def pinit(self):
+        return self._pinit/6894.76
+
+    @property
+    def dt(self):
+        return self._dt/(24*60*60)
+
+    @property
+    def shape(self):
+        return (self.grids.numtot,self.grids.numtot)
+    
+    @property
+    def T(self):
+        return self._T*24*60*60*6894.76*3.28084**3
+        
+    @property
+    def Act(self):
+        return self._Act*24*60*60*6894.76*3.28084**3
+
+    @property
+    def J(self):
+        return self._J*24*60*60*6894.76*3.28084**3
+
+    @property
+    def Q(self):
+        return self._Q*24*60*60*3.28084**3
+    
+def trans_vector3D(grids):
     
     dx_m = (grids.size[:,0]+grids.size[grids.index[:,1],0])/2
     dx_p = (grids.size[:,0]+grids.size[grids.index[:,2],0])/2
@@ -158,7 +291,7 @@ def TransVector3D(grids):
 
     return transmissibility
 
-class Implicit3D():
+class ImplicitSolver3D():
     
     """
     This class is supposed to generate regular grids in cartesian
@@ -492,7 +625,7 @@ class Implicit3D():
             
             b = -self.pressure[:,i-1]/self.time_step+self.b_correction-CCC
             
-            self.pressure[:,i] = sps(G,b)
+            self.pressure[:,i] = linalg.spsolve(G,b)
 
     def postprocess(self):
 
@@ -597,7 +730,7 @@ class Implicit3D():
 
         return array
 
-def NewtonSolver(grids,timestep,timesteps,T,J,Q):
+def newton_solver(grids,timestep,timesteps,T,J,Q):
 
     array = np.zeros((grids.numtot,timesteps))
 
@@ -634,7 +767,7 @@ def NewtonSolver(grids,timestep,timesteps,T,J,Q):
 
     return array
 
-def PicardSolver(grids,timestep,timesteps,T,J,Q):
+def picard_solver(grids,timestep,timesteps,T,J,Q):
 
     pass
 

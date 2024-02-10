@@ -346,80 +346,130 @@ class HexaHedron():
 
 		return area
 
-class OneDimCuboid():
+class OneDimRecCuboid():
 
-    def __init__(self,length,numtot,csa):
+	def __init__(self,length,csarea,numtot):
+		"""One dimensional reservoir model defined by:
 
-        self.length = length
+		length 	: length of reservoir in ft
+		csarea 	: cross sectional area perpendicular to the flow in ft2
+		numtot 	: number of grids in the direction of flow
 
-        self.numtot = numtot
+		"""
 
-        self.csa = csa
+		self._length = length*0.3048
 
-        self.num = (numtot,1,1)
+		self._csarea = csarea*0.3048**2
 
-        self._index()
+		# The parameters starting with underscore are defined in SI units.
+		# The same parameters without underscore are in Oil Field units.
 
-        self._size()
+		self._numtot = numtot
 
-        self._area()
+		self._num = (numtot,1,1)
 
-    def _index(self):
+		# The following parameters calculated for the Finite Difference implementation.
 
-        idx = numpy.arange(self.numtot)
+		self.set_index()
 
-        self.index = numpy.tile(idx,(7,1)).T
+		self.set_xaxis()
 
-        self.index[idx.reshape(-1,self.num[0])[:,1:].ravel(),1] -= 1
-        self.index[idx.reshape(-1,self.num[0])[:,:-1].ravel(),2] += 1
-        self.index[idx.reshape(self.num[2],-1)[:,self.num[0]:],3] -= self.num[0]
-        self.index[idx.reshape(self.num[2],-1)[:,:-self.num[0]],4] += self.num[0]
-        self.index[idx.reshape(self.num[2],-1)[1:,:],5] -= self.num[0]*self.num[1]
-        self.index[idx.reshape(self.num[2],-1)[:-1,:],6] += self.num[0]*self.num[1]
+		self.set_size()
 
-    def _size(self):
+		self.set_area()
 
-        self.size = numpy.zeros((self.numtot,3))
+	def set_index(self):
 
-        self.size[:,0] = self.length/self.num[0]
-        self.size[:,1] = self.csa
-        self.size[:,2] = 1
+		idx = numpy.arange(self.numtot)
 
-        self.xaxis = numpy.linspace(0,self.length,self.numtot,endpoint=False)+self.size[:,0]/2
+		self.index = numpy.tile(idx,(3,1)).T
 
-    def _area(self):
+		self.index[idx.reshape(-1,self.numtot)[:,1:].ravel(),1] -= 1
+		self.index[idx.reshape(-1,self.numtot)[:,:-1].ravel(),2] += 1
+		# self.index[idx.reshape(1,-1)[:,self.numtot:],3] -= self.numtot
+		# self.index[idx.reshape(1,-1)[:,:-self.numtot],4] += self.numtot
+		# self.index[idx.reshape(1,-1)[1:,:],5] -= self.numtot
+		# self.index[idx.reshape(1,-1)[:-1,:],6] += self.numtot
 
-        self.area = numpy.zeros((self.numtot,6))
+	def set_xaxis(self):
 
-        self.area[:,0] = self.size[:,1]*self.size[:,2]
-        self.area[:,1] = self.size[:,1]*self.size[:,2]
-        self.area[:,2] = self.size[:,2]*self.size[:,0]
-        self.area[:,3] = self.size[:,2]*self.size[:,0]
-        self.area[:,4] = self.size[:,0]*self.size[:,1]
-        self.area[:,5] = self.size[:,0]*self.size[:,1]
+		self._xaxis = numpy.arange(
+			self._length/self._numtot/2,
+			self._length,
+			self._length/self._numtot)
 
-    def set_permeability(self,permeability,homogeneous=True,isotropic=True):
+	def set_size(self):
 
-        self.permeability = numpy.zeros((self.numtot,3))
+		self._size = numpy.zeros((self.numtot,1))
 
-        if homogeneous and isotropic:
-            
-            self.permeability[:] = permeability
+		self._size[:,0] = self._length/self._numtot
+		# self._size[:,1] = self._area
+		# self._size[:,2] = 1
 
-        elif homogeneous and not isotropic:
+	def set_area(self):
 
-            self.permeability[:] = permeability
+		self._area = numpy.zeros((self.numtot,2))
 
-        elif not homogeneous and isotropic:
+		self._area[:,0] = self._csarea # self._size[:,1]*self._size[:,2]
+		self._area[:,1] = self._csarea # self._size[:,1]*self._size[:,2]
+		# self._area[:,2] = self._size[:,2]*self._size[:,0]
+		# self._area[:,3] = self._size[:,2]*self._size[:,0]
+		# self._area[:,4] = self._size[:,0]*self._size[:,1]
+		# self._area[:,5] = self._size[:,0]*self._size[:,1]
 
-            self.permeability[:,0] = permeability
-            self.permeability[:,1] = permeability
-            self.permeability[:,2] = permeability
+	def set_permeability(self,permeability):
+		"""permeability in mD"""
 
-        else:
+		self._perm = numpy.asarray(permeability).flatten()
+		self._perm *= 9.869233e-16
 
-            self.permeability[:] = permeability
+		if self._perm.size==1:
+			self._perm = self._perm.repeat(self._numtot)
 
+	def set_porosity(self,porosity):
+		"""porosity in fractions"""
+
+		self._poro = numpy.asarray(porosity).flatten()
+
+		if self._poro.size==1:
+			self._poro = self._poro.repeat(self._numtot)
+
+	@property
+	def length(self):
+		return self._length/0.3048
+
+	@property
+	def csarea(self):
+		return self._csarea/0.3048**2
+
+	@property
+	def numtot(self):
+		return self._numtot
+
+	@property
+	def num(self):
+		return self._num
+
+	@property
+	def xaxis(self):
+		return self._xaxis/0.3048
+
+	@property
+	def size(self):
+		return self._size/0.3048
+	
+	@property
+	def area(self):
+		return self._area/0.3048**2
+
+	@property
+	def perm(self):
+		return self._perm/9.869233e-16
+
+	@property
+	def poro(self):
+		return self._poro
+	
 if __name__ == "__main__":
 
 	cells = Hexahedron(
