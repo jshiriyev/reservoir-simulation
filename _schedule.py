@@ -4,6 +4,68 @@ from .directory._browser import Browser
 
 from borepy.gmodel._stock import Stock
 
+class Wells():
+
+    def __init__(self):
+
+        self.well_grids      = np.array([],dtype=int)
+        self.well_indices    = np.array([],dtype=int)
+        self.well_bhpflags   = np.array([],dtype=bool)
+        self.well_limits     = np.array([],dtype=float)
+
+    def __iter__(self):
+
+        wells = zip(self.Wells.Trajectory.tracks,
+            self.Wells.consbhp,
+            self.Wells.limits,
+            )
+
+        for index,(track,flag,limit) in enumerate(wells):
+            pass
+
+    def set(self):
+
+        for index,(track,flag,limit) in enumerate(wells):
+
+            ttrack = np.transpose(track[:,:,np.newaxis],(2,1,0))
+
+            vector = self.PorRock.grid_centers[:,:,np.newaxis]-ttrack
+
+            distance = np.sqrt(np.sum(vector**2,axis=1))
+
+            well_grid = np.unique(np.argmin(distance,axis=0))
+
+            well_index = np.full(well_grid.size,index,dtype=int)
+    
+            well_bhpflag = np.full(well_grid.size,flag,dtype=bool)
+
+            well_limit = np.full(well_grid.size,limit,dtype=float)
+
+            self.well_grids = np.append(self.well_grids,well_grid)
+
+            self.well_indices = np.append(self.well_indices,well_index)
+
+            self.well_bhpflags = np.append(self.well_bhpflags,well_bhpflag)
+
+            self.well_limits = np.append(self.well_limits,well_limit)
+
+        dx = self.PorRock.grid_sizes[self.well_grids,0]
+        dy = self.PorRock.grid_sizes[self.well_grids,1]
+        dz = self.PorRock.grid_sizes[self.well_grids,2]
+
+        req = 0.14*np.sqrt(dx**2+dy**2)
+
+        rw = self.Wells.radii[self.well_indices]
+
+        skin = self.Wells.skinfactors[self.well_indices]
+
+        kx = self.PorRock.permeability[:,0][self.well_grids]
+        ky = self.PorRock.permeability[:,1][self.well_grids]
+
+        dz = self.PorRock.grid_sizes[:,2][self.well_grids]
+
+        self.JR = (2*np.pi*dz*np.sqrt(kx*ky))/(np.log(req/rw)+skin)
+
 class Schedule(Browser):
 
     def __init__(self,*args,**kwargs):

@@ -348,106 +348,175 @@ class HexaHedron():
 
 class RecCuboid():
 
-	def __init__(self,num:tuple,length:float=None,width:float=None,height:float=None,dimension:int=None):
-		"""Three-dimensional reservoir model defined by:
+	def __init__(self,
+		xdelta:tuple=None,
+		ydelta:tuple=None,
+		zdelta:tuple=None,
+		length:float=None,
+		width:float=None,
+		height:float=None,
+		num:tuple=None,
+		dim:int=None):
+		"""Three-dimensional reservoir model can be initialized in two different ways:
 		
-		num 	: number of grids, (Nlength, Nwidth, Nheight)
+		Method 1:
 
-		length 	: length of reservoir in ft, (x direction
+		xdelta	: length of grids in ft, (Nlength,)
+		ydelta	: width of grids in ft, (Nwidth,)
+		zdelta	: height of grids in ft, (Nheight,)
+
+		Method 2:
+
+		length 	: length of reservoir in ft, (x direction)
 		width 	: width of reservoir in ft, (y direction)
 		height 	: height of reservoir in ft, (z direction)
 
-		dimension 	: it can be 1, 2, or 3
+		num 	: number of grids, (Nlength, Nwidth, Nheight)
 
-		to calculate the control volume implementation parameters.
+		Other Inputs:
+
+		dim 	: flow dimension it can be 1, 2, or 3
+
+		The object has methods to calculate the control volume implementation parameters.
 
 		"""
 
-		self._num 	 = num
-
-		self._length = num[0]*1000*0.3048 if length is None else length*0.3048
-		self._width  = num[1]*1000*0.3048 if width is None else width*0.3048
-		self._height = num[2]*1000*0.3048 if height is None else height*0.3048
+		if isinstance(xdelta,tuple): # Method 1:
+			self.init1(xdelta,ydelta,zdelta)
+		else:						 # Method 2:
+			self.init2(legnth,width,height,num)
 
 		# The parameters starting with underscore are defined in SI units.
 		# The same parameters without underscore are in Oil Field units.
 
-		if dimension is not None:
-			pass
-		elif num[2]>1:
-			dimension = 3
-		elif num[1]>1:
-			dimension = 2
+		if dim is not None:
+			self.dimension = dim
+		elif self._num[2]>1:
+			self.dimension = 3
+		elif self._num[1]>1:
+			self.dimension = 2
 		else:
-			dimension = 1
+			self.dimension = 1
 
-		self.set_index(dimension)
+		self.set_index()
 		self.set_size()
-		self.set_area(dimension)
+		self.set_area()
 		self.set_volume()
 
-	def set_index(self,dimension:int=3):
-		"""dimension can be 1, 2, or 3"""
+	def init1(self,xdelta,ydelta,zdelta):
+		"""Initialization with the first method."""
+
+		self._xdelta = numpy.asarray(xdelta).astype(numpy.float64)*0.3048
+		self._ydelta = numpy.asarray(ydelta).astype(numpy.float64)*0.3048
+		self._zdelta = numpy.asarray(zdelta).astype(numpy.float64)*0.3048
+
+		self._length = self._xdelta.sum()
+		self._width  = self._ydelta.sum()
+		self._height = self._zdelta.sum()
+
+		self._num 	 = (len(xdelta),len(ydelta),len(zdelta))
+
+	def init2(self,length,width,height,num):
+		"""Initialization with the second method."""
+
+		self._length = length*0.3048
+		self._width  = width*0.3048
+		self._height = height*0.3048
+
+		self._xdelta = numpy.repeat(self._length/num[0],num[0])
+		self._ydelta = numpy.repeat(self._width/num[1],num[1])
+		self._zdelta = numpy.repeat(self._height/num[2],num[2])
+
+		self._num 	 = num
+
+	def set_index(self):
 
 		idx = numpy.arange(self.numtot)
 
 		num = self._num
 
-		self.index = numpy.tile(idx,(1+dimension*2,1)).T
+		self.index = numpy.tile(idx,(1+self.dimension*2,1)).T
 
 		self.index[idx.reshape(-1,num[0])[:,1:].ravel(),1] -= 1
 		self.index[idx.reshape(-1,num[0])[:,:-1].ravel(),2] += 1
 
-		if dimension>1:
+		if self.dimension>1:
 			self.index[idx.reshape(num[2],-1)[:,num[0]:],3] -= num[0]
 			self.index[idx.reshape(num[2],-1)[:,:-num[0]],4] += num[0]
 
-		if dimension>2:
+		if self.dimension>2:
 			self.index[idx.reshape(num[2],-1)[1:,:],5] -= num[0]*num[1]
 			self.index[idx.reshape(num[2],-1)[:-1,:],6] += num[0]*num[1]
 
 	def set_xaxis(self):
 
-		self._xaxis = numpy.arange(
-			self._length/self._num[0]/2,
-			self._length,
-			self._length/self._num[0])
+		side2 = numpy.cumsum(self._xdelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		self._xaxis = (side1+side2)/2
+
+		# self._xaxis = numpy.arange(
+		# 	self._length/self._num[0]/2,
+		# 	self._length,
+		# 	self._length/self._num[0])
 
 	def set_yaxis(self):
 
-		self._yaxis = numpy.arange(
-			self._width/self._num[1]/2,
-			self._width,
-			self._width/self._num[1])
+		side2 = numpy.cumsum(self._ydelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		self._yaxis = (side1+side2)/2
+
+		# self._yaxis = numpy.arange(
+		# 	self._width/self._num[1]/2,
+		# 	self._width,
+		# 	self._width/self._num[1])
 
 	def set_zaxis(self):
 
-		self._zaxis = numpy.arange(
-			self._height/self._num[2]/2,
-			self._height,
-			self._height/self._num[2])
+		side2 = numpy.cumsum(self._zdelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		self._zaxis = (side1+side2)/2
+
+		# self._zaxis = numpy.arange(
+		# 	self._height/self._num[2]/2,
+		# 	self._height,
+		# 	self._height/self._num[2])
 
 	def set_size(self):
 
 		self._size = numpy.zeros((self.numtot,3))
 
-		self._size[:,0] = self._length/self._num[0]
-		self._size[:,1] = self._width/self._num[1]
-		self._size[:,2] = self._height/self._num[2]
+		# self._size[:,0] = self._length/self._num[0]
+		# self._size[:,1] = self._width/self._num[1]
+		# self._size[:,2] = self._height/self._num[2]
 
-	def set_area(self,dimension:int=3):
-		"""dimension can be 1, 2, or 3"""
+		self._size[:,0] = numpy.tile(self._xdelta,self._num[1]*self._num[2])
 
-		self._area = numpy.zeros((self.numtot,dimension*2))
+		self._size[:,1] = numpy.tile(
+			numpy.repeat(self._ydelta,self._num[0]),self._num[2])
+
+		self._size[:,2] = numpy.repeat(self._zdelta,self._num[0]*self._num[1])
+
+	def set_area(self):
+
+		self._area = numpy.zeros((self.numtot,self.dimension*2))
 
 		self._area[:,0] = self._size[:,1]*self._size[:,2]
 		self._area[:,1] = self._size[:,1]*self._size[:,2]
 
-		if dimension>1:
+		if self.dimension>1:
 			self._area[:,2] = self._size[:,2]*self._size[:,0]
 			self._area[:,3] = self._size[:,2]*self._size[:,0]
 
-		if dimension>2:
+		if self.dimension>2:
 			self._area[:,4] = self._size[:,0]*self._size[:,1]
 			self._area[:,5] = self._size[:,0]*self._size[:,1]
 
@@ -455,22 +524,44 @@ class RecCuboid():
 
 		self._volume = numpy.prod(self._size,axis=1).reshape((-1,1))
 
-	def set_permeability(self,permeability):
-		"""permeability in mD"""
+	def get_property(self,quality,conversion_factor=1.,dtype=None):
 
-		self._perm = numpy.asarray(permeability).flatten()
-		self._perm *= 9.869233e-16
+		quality = numpy.asarray(quality)
 
-		if self._perm.size==1:
-			self._perm = self._perm.repeat(self._numtot)
+		if dtype is not None:
+			quality = quality.astype(dtype)
+
+		quality = quality.flatten()*conversion_factor
+
+		if quality.size==1:
+			quality = quality.repeat(self._numtot)
+
+		return quality.reshape((-1,1))
 
 	def set_porosity(self,porosity):
 		"""porosity in fractions"""
 
-		self._poro = numpy.asarray(porosity).flatten()
+		self._poro = self.get_property(porosity,dtype=numpy.float64)
 
-		if self._poro.size==1:
-			self._poro = self._poro.repeat(self._numtot)
+	def set_permeability(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
+		"""xperm in mD"""
+
+		_xperm = self.get_property(
+			xperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+
+		if yperm is not None:
+			_yperm = self.get_property(
+				yperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+		else:
+			_yperm = _xperm*yreduce
+
+		if zperm is not None:
+			_zperm = self.get_property(
+				zperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+		else:
+			_zperm = _xperm*zreduce
+
+		self._perm = numpy.concatenate((_xperm,_yperm,_zperm),axis=1)
 
 	@property
 	def num(self):
@@ -480,6 +571,18 @@ class RecCuboid():
 	def numtot(self):
 		return numpy.prod(self._num).item()
 
+	@property
+	def xdelta(self):
+		return self._xdelta/0.3048
+
+	@property
+	def ydelta(self):
+		return self._ydelta/0.3048
+
+	@property
+	def zdelta(self):
+		return self._zdelta/0.3048
+	
 	@property
 	def length(self):
 		return self._length/0.3048

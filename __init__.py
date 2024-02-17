@@ -15,6 +15,6 @@ from ._cappres import ScanCurves
 
 # from ._grids import CornerPoint
 # from ._grids import HexaHedron
-# from ._grids import OneDimRecCuboid
+from ._grids import RecCuboid
 
 from ._initialization import ResInit
