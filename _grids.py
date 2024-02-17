@@ -346,76 +346,114 @@ class HexaHedron():
 
 		return area
 
-class OneDimRecCuboid():
+class RecCuboid():
 
-	def __init__(self,length,csarea,numtot):
-		"""One dimensional reservoir model defined by:
+	def __init__(self,num:tuple,length:float=None,width:float=None,height:float=None,dimension:int=None):
+		"""Three-dimensional reservoir model defined by:
+		
+		num 	: number of grids, (Nlength, Nwidth, Nheight)
 
-		length 	: length of reservoir in ft
-		csarea 	: cross sectional area perpendicular to the flow in ft2
-		numtot 	: number of grids in the direction of flow
+		length 	: length of reservoir in ft, (x direction
+		width 	: width of reservoir in ft, (y direction)
+		height 	: height of reservoir in ft, (z direction)
+
+		dimension 	: it can be 1, 2, or 3
+
+		to calculate the control volume implementation parameters.
 
 		"""
 
-		self._length = length*0.3048
+		self._num 	 = num
 
-		self._csarea = csarea*0.3048**2
+		self._length = num[0]*1000*0.3048 if length is None else length*0.3048
+		self._width  = num[1]*1000*0.3048 if width is None else width*0.3048
+		self._height = num[2]*1000*0.3048 if height is None else height*0.3048
 
 		# The parameters starting with underscore are defined in SI units.
 		# The same parameters without underscore are in Oil Field units.
 
-		self._numtot = numtot
+		if dimension is not None:
+			pass
+		elif num[2]>1:
+			dimension = 3
+		elif num[1]>1:
+			dimension = 2
+		else:
+			dimension = 1
 
-		self._num = (numtot,1,1)
-
-		# The following parameters calculated for the Finite Difference implementation.
-
-		self.set_index()
-
-		self.set_xaxis()
-
+		self.set_index(dimension)
 		self.set_size()
+		self.set_area(dimension)
+		self.set_volume()
 
-		self.set_area()
-
-	def set_index(self):
+	def set_index(self,dimension:int=3):
+		"""dimension can be 1, 2, or 3"""
 
 		idx = numpy.arange(self.numtot)
 
-		self.index = numpy.tile(idx,(3,1)).T
+		num = self._num
 
-		self.index[idx.reshape(-1,self.numtot)[:,1:].ravel(),1] -= 1
-		self.index[idx.reshape(-1,self.numtot)[:,:-1].ravel(),2] += 1
-		# self.index[idx.reshape(1,-1)[:,self.numtot:],3] -= self.numtot
-		# self.index[idx.reshape(1,-1)[:,:-self.numtot],4] += self.numtot
-		# self.index[idx.reshape(1,-1)[1:,:],5] -= self.numtot
-		# self.index[idx.reshape(1,-1)[:-1,:],6] += self.numtot
+		self.index = numpy.tile(idx,(1+dimension*2,1)).T
+
+		self.index[idx.reshape(-1,num[0])[:,1:].ravel(),1] -= 1
+		self.index[idx.reshape(-1,num[0])[:,:-1].ravel(),2] += 1
+
+		if dimension>1:
+			self.index[idx.reshape(num[2],-1)[:,num[0]:],3] -= num[0]
+			self.index[idx.reshape(num[2],-1)[:,:-num[0]],4] += num[0]
+
+		if dimension>2:
+			self.index[idx.reshape(num[2],-1)[1:,:],5] -= num[0]*num[1]
+			self.index[idx.reshape(num[2],-1)[:-1,:],6] += num[0]*num[1]
 
 	def set_xaxis(self):
 
 		self._xaxis = numpy.arange(
-			self._length/self._numtot/2,
+			self._length/self._num[0]/2,
 			self._length,
-			self._length/self._numtot)
+			self._length/self._num[0])
+
+	def set_yaxis(self):
+
+		self._yaxis = numpy.arange(
+			self._width/self._num[1]/2,
+			self._width,
+			self._width/self._num[1])
+
+	def set_zaxis(self):
+
+		self._zaxis = numpy.arange(
+			self._height/self._num[2]/2,
+			self._height,
+			self._height/self._num[2])
 
 	def set_size(self):
 
-		self._size = numpy.zeros((self.numtot,1))
+		self._size = numpy.zeros((self.numtot,3))
 
-		self._size[:,0] = self._length/self._numtot
-		# self._size[:,1] = self._area
-		# self._size[:,2] = 1
+		self._size[:,0] = self._length/self._num[0]
+		self._size[:,1] = self._width/self._num[1]
+		self._size[:,2] = self._height/self._num[2]
 
-	def set_area(self):
+	def set_area(self,dimension:int=3):
+		"""dimension can be 1, 2, or 3"""
 
-		self._area = numpy.zeros((self.numtot,2))
+		self._area = numpy.zeros((self.numtot,dimension*2))
 
-		self._area[:,0] = self._csarea # self._size[:,1]*self._size[:,2]
-		self._area[:,1] = self._csarea # self._size[:,1]*self._size[:,2]
-		# self._area[:,2] = self._size[:,2]*self._size[:,0]
-		# self._area[:,3] = self._size[:,2]*self._size[:,0]
-		# self._area[:,4] = self._size[:,0]*self._size[:,1]
-		# self._area[:,5] = self._size[:,0]*self._size[:,1]
+		self._area[:,0] = self._size[:,1]*self._size[:,2]
+		self._area[:,1] = self._size[:,1]*self._size[:,2]
+
+		if dimension>1:
+			self._area[:,2] = self._size[:,2]*self._size[:,0]
+			self._area[:,3] = self._size[:,2]*self._size[:,0]
+
+		if dimension>2:
+			self._area[:,4] = self._size[:,0]*self._size[:,1]
+			self._area[:,5] = self._size[:,0]*self._size[:,1]
+
+	def set_volume(self):
+
+		self._volume = numpy.prod(self._size,axis=1).reshape((-1,1))
 
 	def set_permeability(self,permeability):
 		"""permeability in mD"""
@@ -435,33 +473,55 @@ class OneDimRecCuboid():
 			self._poro = self._poro.repeat(self._numtot)
 
 	@property
-	def length(self):
-		return self._length/0.3048
-
-	@property
-	def csarea(self):
-		return self._csarea/0.3048**2
-
-	@property
-	def numtot(self):
-		return self._numtot
-
-	@property
 	def num(self):
 		return self._num
 
 	@property
+	def numtot(self):
+		return numpy.prod(self._num).item()
+
+	@property
+	def length(self):
+		return self._length/0.3048
+
+	@property
+	def width(self):
+		return self._width/0.3048
+
+	@property
+	def height(self):
+		return self._height/0.3048
+
+	@property
 	def xaxis(self):
+		if not hasattr(self,"_xaxis"):
+			self.set_xaxis()
 		return self._xaxis/0.3048
+
+	@property
+	def yaxis(self):
+		if not hasattr(self,"_yaxis"):
+			self.set_yaxis()
+		return self._yaxis/0.3048
+
+	@property
+	def zaxis(self):
+		if not hasattr(self,"_zaxis"):
+			self.set_zaxis()
+		return self._zaxis/0.3048
 
 	@property
 	def size(self):
 		return self._size/0.3048
-	
+
 	@property
 	def area(self):
 		return self._area/0.3048**2
 
+	@property
+	def volume(self):
+		return self._volume/0.3048**3
+	
 	@property
 	def perm(self):
 		return self._perm/9.869233e-16
@@ -472,16 +532,16 @@ class OneDimRecCuboid():
 	
 if __name__ == "__main__":
 
-	cells = Hexahedron(
-		((-5,-5,5),(5,-5,5)),
-		((5,-5,5),(15,-5,5)),
-		((5,-5,-5),(15,-5,-5)),
-		((-5,-5,-5),(5,-5,-5)),
-		((-5,5,5),(5,5,5)),
-		((5,5,5),(15,5,5)),
-		((5,5,-5),(15,5,-5)),
-		((-5,5,-5),(5,5,-5)),
-	)
+	# cells = Hexahedron(
+	# 	((-5,-5,5),(5,-5,5)),
+	# 	((5,-5,5),(15,-5,5)),
+	# 	((5,-5,-5),(15,-5,-5)),
+	# 	((-5,-5,-5),(5,-5,-5)),
+	# 	((-5,5,5),(5,5,5)),
+	# 	((5,5,5),(15,5,5)),
+	# 	((5,5,-5),(15,5,-5)),
+	# 	((-5,5,-5),(5,5,-5)),
+	# )
 
 	# print(cells.unormal1)
 
@@ -494,4 +554,11 @@ if __name__ == "__main__":
 	# print(cells.center5)
 	# print(cells.center6)
 
-	print(cells.volume)
+	# print(cells.volume)
+
+	grids = RecCuboid((4,1,1))
+
+	print(grids.index)
+	# print(grids.area)
+	# print(grids.zaxis)
+	# print(grids.volume)
