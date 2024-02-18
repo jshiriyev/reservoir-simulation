@@ -64,7 +64,7 @@ class Tclass():
             self._perm[:,5] = (2*self._delta[:,5])/(self.grid._size[:,2]/self.grid._perm[:,2]+
                 self.grid._size[self.grid.index[:,6],2]/self.grid._perm[self.grid.index[:,6],2])
 
-    def self_static(self):
+    def set_static(self):
         """static part of the transmissibility values,
         has the shape of (number of grids, flow dimension x 2)."""
         self._static = (self._perm*self.grid._area)/(self._delta)
@@ -82,7 +82,7 @@ class Tclass():
 
         if self.grid.dimension>1:
             tmatrix = self.utility(tmatrix,2,array)
-            tmatrix = self.utility(Tmatrix,3,array)
+            tmatrix = self.utility(tmatrix,3,array)
 
         if self.grid.dimension>2:
             tmatrix = self.utility(tmatrix,4,array)
@@ -90,7 +90,7 @@ class Tclass():
 
         return tmatrix
 
-    def Jmatrix(self,array,*columns):
+    def Jmatrix(self,array,*pconst):
         """
         array   : transmissibility array of size (number of grids, flow dimension x 2)
         columns : integer indicating the direction where the
@@ -109,7 +109,7 @@ class Tclass():
 
         jmatrix = csr(self.shape)
 
-        for column in columns:
+        for column, _ in pconst:
 
             fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
 
@@ -153,7 +153,7 @@ class Tclass():
 
             fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
 
-            indices = (self.grid.index[fringes,0],numpy.zeros(fringes.size))
+            indices = (self.grid.index[fringes,0],numpy.zeros(fringes.sum()))
 
             qvector += csr((2*array[fringes,column]*pressure*6894.76,indices),shape=shape)
 
@@ -161,7 +161,7 @@ class Tclass():
 
     def Gvector(self,array,fluid):
 
-        return fluid.density*self.gravity*self.Tmatrix(array).dot(self.grid._depth)
+        return fluid._density*self.gravity*self.Tmatrix(array).dot(self.grid._depth)
 
     @property
     def shape(self):
@@ -202,6 +202,26 @@ class Tclass():
         tmatrix -= csr((array[notOnBorder,column],offs_indices),shape=tmatrix.shape)
 
         return tmatrix
+
+    def T(self,tmatrix):
+        """unit conversion from SI to Oil Field Units"""
+        return tmatrix*24*60*60*6894.76*3.28084**3
+    
+    def J(self,jmatrix):
+        """unit conversion from SI to Oil Field Units"""
+        return jmatrix*24*60*60*6894.76*3.28084**3
+
+    def A(self,amatrix):
+        """unit conversion from SI to Oil Field Units"""
+        return amatrix*24*60*60*3.28084**3
+
+    def Q(self,qvector):
+        """unit conversion from SI to Oil Field Units"""
+        return qvector*24*60*60*3.28084**3
+
+    def G(self,gvector):
+        """unit conversion from SI to Oil Field Units"""
+        return gvector*24*60*60*3.28084**3
 
 class MixedSolver():
     """
@@ -252,13 +272,22 @@ class MixedSolver():
         self._time = numpy.arange(
             self._tstep,self._ttime+self._tstep/2,self._tstep)
 
-    def initialize(self,pressure,Swirr=0,ctotal=None):
+    def initialize(self,reference,ctotal=None,Swirr=0):
         """Initializing the reservoir pressure
         
-        pressure    : initial pressure in psi
+        reference   : reference depth and pressure,
+                      tuple of (depth in ft, pressure in psi)
+
         ctotal      : total compressibility 1/psi
         """
-        self._pinit = numpy.ones((self.grid.numtot,1))*pressure*6894.76
+
+        depth,pressure = reference
+
+        ddepth = (self.grid._depth-depth*0.3048)
+
+        hsdiff = self.fluid._density*self.tclass.gravity*ddepth
+
+        self._pinit = pressure*6894.76+hsdiff
 
         # self.Sw = Swirr
         # self.So = 1-self.Sw
@@ -271,68 +300,60 @@ class MixedSolver():
 
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
 
-        self._pressure[:,0] = self._pinit.flatten()
+    def solve(self,pconsts):
 
-    def solve(self,timesteps):
+        array = self.tclass.array(self.fluid)
 
         P = self._pinit
 
-        LHS = self._Act+self._T+self._J
-        
-        Psol = np.zeros((self.grid.numtot,timesteps))
-        
-        for k in range(timesteps):
+        T = self.tclass.Tmatrix(array)
+        J = self.tclass.Jmatrix(array,*pconsts)
+        A = self.tclass.Amatrix(self._tstep)
+        Q = self.tclass.Qvector(array,*pconsts)
+        G = self.tclass.Gvector(array,self.fluid)
 
-            # array = self.tclass.array(self.fluid)
+        print(T.shape)
+        print(J.shape)
+        print(A.shape)
+        print(Q.shape)
+        print(G.shape)
+        print(G*24*60*60*3.28084**3)
+        
+        for k in range(self.nstep):
+
+            if self.theta==0:
+                P = self.implicit(P,T,J,A,Q,G)
+            elif self.theta==1:
+                P = self.explicit(P,T,J,A,Q,G)
+            else:
+                P = self.mixed(P,T,J,A,Q,G)
+
+            print(f"{k} time step is complete...")
             
-            RHS = csr.dot(self._Act,P)+self._Q
-            
-            P = linalg.spsolve(LHS,RHS)
-            
-            Psol[:,k] = P/6894.76
+            self._pressure[:,k] = P
 
             P = P.reshape((-1,1))
 
-        # mshape = (grid.numtot,grid.numtot)
-        # vshape = (grid.numtot,1)
+    def implicit(self,P,T,J,A,Q,G):
 
-        # vzeros = np.zeros(self.Wells.number,dtype=int)
+        Act = A*self._ctotal
 
-        # indices = self.PorRock.grid_indices
+        return linalg.spsolve(T+J+Act,csr.dot(Act,P)+Q+G)
 
-        # shape = (grid.numtot,self.grid.numtot)
+    def mixed(self,P,T,J,A,Q,G):
 
-        # oneperdtime = np.ones(grid.numtot)/self.time_step
-        
-        # t_correction = csr((oneperdtime,(indices[:,0],indices[:,0])),shape=shape)
+        Act = A*self._ctotal
 
-        # J_v = (self.JR)/(self.Fluids.viscosity[0]) #*self.Fluids.fvf[0]
+        LHS = (1-self.theta)(T+J)+Act
+        RHS = csr.dot(Act-self.theta*(T+J),P)+Q+G
 
-        # self.J = csr((J_v[self.well_bhpflags],(self.well_grid[self.well_bhpflags],self.well_grid[self.well_bhpflags])),shape=mshape)
-        
-        # self.Q = csr(vshape)
+        return linalg.spsolve(LHS,RHS)
 
-        # q_cp = self.well_limits[self.well_bhpflags]*J_v[self.well_bhpflags]
+    def explicit(self,P,T,J,A,Q,G):
 
-        # q_cr = self.well_limits[~self.well_bhpflags]
+        Act = A*self._ctotal
 
-        # self.Q += csr((q_cp,(self.well_grid[self.well_bhpflags],vzeros[self.well_bhpflags])),shape=vshape)
-
-        # self.Q += csr((q_cr,(self.well_grid[~self.well_bhpflags],vzeros[~self.well_bhpflags])),shape=vshape)
-
-        # self.Q = self.Q.toarray().flatten()
-
-        # G = self.Gmatrix-t_correction
-
-        # CCC = self.Q/grid.volume/self.PorRock.porosity/self.compressibility
-        
-        # for i in range(1,self.times.size):
-            
-        #     b = -self.pressure[:,i-1]/self.time_step+self.b_correction-CCC
-            
-        #     self.pressure[:,i] = linalg.spsolve(G,b)
-
-        return Psol
+        return P+linalg.spsolve(Act,csr.dot(-(T+J),P)+Q+G)
 
     def postprocess(self):
 
@@ -355,7 +376,7 @@ class MixedSolver():
         return self._ctotal*6894.76
 
     @property
-    def dtime(self):
+    def tstep(self):
         return self._tstep/(24*60*60)
 
     @property
@@ -373,26 +394,6 @@ class MixedSolver():
     @property
     def pressure(self):
         return self._pressure/6894.76
-    
-    @property
-    def T(self):
-        return self._T*24*60*60*6894.76*3.28084**3
-    
-    @property
-    def J(self):
-        return self._J*24*60*60*6894.76*3.28084**3
-
-    @property
-    def A(self):
-        return self._A*24*60*60*3.28084**3
-
-    @property
-    def Q(self):
-        return self._Q*24*60*60*3.28084**3
-
-    @property
-    def G(self):
-        return self._G
     
 def newton_solver(grid,timestep,timesteps,T,J,Q):
 

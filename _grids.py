@@ -457,11 +457,6 @@ class RecCuboid():
 
 		self._xaxis = (side1+side2)/2
 
-		# self._xaxis = numpy.arange(
-		# 	self._length/self._num[0]/2,
-		# 	self._length,
-		# 	self._length/self._num[0])
-
 	def set_yaxis(self):
 
 		side2 = numpy.cumsum(self._ydelta)
@@ -470,11 +465,6 @@ class RecCuboid():
 		side1[0] = 0
 
 		self._yaxis = (side1+side2)/2
-
-		# self._yaxis = numpy.arange(
-		# 	self._width/self._num[1]/2,
-		# 	self._width,
-		# 	self._width/self._num[1])
 
 	def set_zaxis(self):
 
@@ -485,18 +475,9 @@ class RecCuboid():
 
 		self._zaxis = (side1+side2)/2
 
-		# self._zaxis = numpy.arange(
-		# 	self._height/self._num[2]/2,
-		# 	self._height,
-		# 	self._height/self._num[2])
-
 	def set_size(self):
 
 		self._size = numpy.zeros((self.numtot,3))
-
-		# self._size[:,0] = self._length/self._num[0]
-		# self._size[:,1] = self._width/self._num[1]
-		# self._size[:,2] = self._height/self._num[2]
 
 		self._size[:,0] = numpy.tile(self._xdelta,self._num[1]*self._num[2])
 
