@@ -12,8 +12,6 @@ from scipy.sparse import csr_matrix as csr
 
 class Tclass():
 
-    gravity = 9.81
-
     def __init__(self,grid):
 
         self.grid = grid
@@ -77,16 +75,52 @@ class Tclass():
 
         tmatrix = csr(self.shape)
 
-        tmatrix = self.utility(tmatrix,0,array)
-        tmatrix = self.utility(tmatrix,1,array)
+        tmatrix = self.Tcharge(tmatrix,0,array)
+        tmatrix = self.Tcharge(tmatrix,1,array)
 
         if self.grid.dimension>1:
-            tmatrix = self.utility(tmatrix,2,array)
-            tmatrix = self.utility(tmatrix,3,array)
+            tmatrix = self.Tcharge(tmatrix,2,array)
+            tmatrix = self.Tcharge(tmatrix,3,array)
 
         if self.grid.dimension>2:
-            tmatrix = self.utility(tmatrix,4,array)
-            tmatrix = self.utility(tmatrix,5,array)
+            tmatrix = self.Tcharge(tmatrix,4,array)
+            tmatrix = self.Tcharge(tmatrix,5,array)
+
+        return tmatrix
+
+    def Tcharge(self,tmatrix:csr,column:int,array:numpy.ndarray):
+        """
+        Returns updated transmissibility matrix:
+
+        tmatrix : csr_matrix object defined for transmissibility matrix
+ 
+        column  : integer indicating the direction:
+            0   : xmin direction
+            1   : xmax direction
+            2   : ymin direction
+            3   : ymax direction
+            4   : zmin direction
+            5   : zmax direction
+
+        array   : transmissibility array with the size of
+                  (number of grids, 2*dimension) and float type
+
+        The transmissibility matrix is updated for:
+
+        1. transmissibility matrix diagonal entries 
+        2. transmissibility matrix offset entries
+
+        """
+        notOnBorder = ~(self.grid.index[:,0]==self.grid.index[:,column+1])
+
+        # indices of grids not located at the border for the given direction
+        diag_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,0])
+
+        # indices of neighbor grids in that direction
+        offs_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,column+1])
+
+        tmatrix += csr((array[notOnBorder,column],diag_indices),shape=tmatrix.shape)
+        tmatrix -= csr((array[notOnBorder,column],offs_indices),shape=tmatrix.shape)
 
         return tmatrix
 
@@ -164,68 +198,83 @@ class Tclass():
         return fluid._density*self.gravity*self.Tmatrix(array).dot(self.grid._depth)
 
     @property
+    def gravity(self):
+        return 9.807
+
+    @property
     def shape(self):
         return (self.grid.numtot,self.grid.numtot)
-    
-    def utility(self,tmatrix:csr,column:int,array:numpy.ndarray):
+
+    @staticmethod
+    def toSI(value):
+        """Converts transmissibility value from
+        Oil Field Units to SI Units."""
+        return value/(3.28084**3*(24*60*60)*6894.76)
+
+    @staticmethod
+    def toFU(value):
+        """Converts transmissibility value from
+        SI Units to Oil Field Units."""
+        return value*(3.28084**3*(24*60*60)*6894.76)
+
+class Well:
+
+    def __init__(self,name:str,block:tuple,sort:str,radius:float,skin:float):
+        """It is a well dictionary used in the simulator.
+        
+        name    : name of the well
+        block   : block indices containing the well 
+        sort    : vertical or horizontal
+
+        raidus  : well radius, ft
+        skin    : skin factor of the well, dimensionless
+
         """
-        Returns updated transmissibility matrix:
+        self._name   = name
+        self._block  = block
+        self._sort   = sort
 
-        tmatrix : csr_matrix object defined for transmissibility matrix
- 
-        column  : integer indicating the direction:
-            0   : xmin direction
-            1   : xmax direction
-            2   : ymin direction
-            3   : ymax direction
-            4   : zmin direction
-            5   : zmax direction
+        self._radius = radius*0.3048
+        self._skin   = skin
 
-        array   : transmissibility array with the size of
-                  (number of grids, 2*dimension) and float type
+        self._conds  = []
 
-        The transmissibility matrix is updated for:
+    def add(self,cond:str,value:float,time:float=0):
+        """Adds a well condition to the conds property of the well:
 
-        1. transmissibility matrix diagonal entries 
-        2. transmissibility matrix offset entries
-
+        cond    : constant RATE or constant BHP
+        value   : the value of constant RATE or BHP
+        time    : the time for implementing the condition, days
         """
-        notOnBorder = ~(self.grid.index[:,0]==self.grid.index[:,column+1])
+        self._conds.append((cond,value,time*24*60*60))
 
-        # indices of grids not located at the border for the given direction
-        diag_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,0])
+    @property
+    def name(self):
+        return self._name
 
-        # indices of neighbor grids in that direction
-        offs_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,column+1])
+    @property
+    def block(self):
+        return self._block
 
-        tmatrix += csr((array[notOnBorder,column],diag_indices),shape=tmatrix.shape)
-        tmatrix -= csr((array[notOnBorder,column],offs_indices),shape=tmatrix.shape)
+    @property
+    def sort(self):
+        return self._sort
 
-        return tmatrix
+    @property
+    def radius(self):
+        return self._radius
 
-    def T(self,tmatrix):
-        """unit conversion from SI to Oil Field Units"""
-        return tmatrix*24*60*60*6894.76*3.28084**3
-    
-    def J(self,jmatrix):
-        """unit conversion from SI to Oil Field Units"""
-        return jmatrix*24*60*60*6894.76*3.28084**3
+    @property
+    def skin(self):
+        return self._skin
 
-    def A(self,amatrix):
-        """unit conversion from SI to Oil Field Units"""
-        return amatrix*24*60*60*3.28084**3
-
-    def Q(self,qvector):
-        """unit conversion from SI to Oil Field Units"""
-        return qvector*24*60*60*3.28084**3
-
-    def G(self,gvector):
-        """unit conversion from SI to Oil Field Units"""
-        return gvector*24*60*60*3.28084**3
+    @property
+    def conds(self):
+        return self._conds  
 
 class MixedSolver():
     """
-    This class solves for single phase reservoir flow in Rectangular Grid.
+    This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
 
     def __init__(self,grid,fluid,well=None,theta=0):
@@ -272,29 +321,22 @@ class MixedSolver():
         self._time = numpy.arange(
             self._tstep,self._ttime+self._tstep/2,self._tstep)
 
-    def initialize(self,reference,ctotal=None,Swirr=0):
+    def initialize(self,pref,ctotal):
         """Initializing the reservoir pressure
         
-        reference   : reference depth and pressure,
-                      tuple of (depth in ft, pressure in psi)
+        pref    : reference depth and pressure,
+                  tuple of (depth in ft, pressure in psi)
 
-        ctotal      : total compressibility 1/psi
+        ctotal  : total compressibility 1/psi
         """
 
-        depth,pressure = reference
+        depth,pressure = pref
 
-        ddepth = (self.grid._depth-depth*0.3048)
+        depth_diff = (self.grid._depth-depth*0.3048)
 
-        hsdiff = self.fluid._density*self.tclass.gravity*ddepth
+        hydro_diff = self.fluid._density*self.tclass.gravity*depth_diff
 
-        self._pinit = pressure*6894.76+hsdiff
-
-        # self.Sw = Swirr
-        # self.So = 1-self.Sw
-
-        # coSo = self.Fluids.compressibility[0]*self.So
-        # cwSw = self.Fluids.compressibility[1]*self.Sw
-        # ctotal = coSo+cwSw+self.PorRock.compressibility
+        self._pinit = pressure*6894.76+hydro_diff
 
         self._ctotal = ctotal/6894.76
 
