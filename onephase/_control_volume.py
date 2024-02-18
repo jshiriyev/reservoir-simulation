@@ -311,13 +311,6 @@ class MixedSolver():
         A = self.tclass.Amatrix(self._tstep)
         Q = self.tclass.Qvector(array,*pconsts)
         G = self.tclass.Gvector(array,self.fluid)
-
-        print(T.shape)
-        print(J.shape)
-        print(A.shape)
-        print(Q.shape)
-        print(G.shape)
-        print(G*24*60*60*3.28084**3)
         
         for k in range(self.nstep):
 
