@@ -534,9 +534,13 @@ class RecCuboid():
 		quality = quality.flatten()*conversion_factor
 
 		if quality.size==1:
-			quality = quality.repeat(self._numtot)
+			quality = quality.repeat(self.numtot)
 
 		return quality.reshape((-1,1))
+
+	def set_depth(self,depth):
+
+		self._depth = self.get_property(depth,conversion_factor=0.3048,dtype=numpy.float64)
 
 	def set_porosity(self,porosity):
 		"""porosity in fractions"""
@@ -624,6 +628,10 @@ class RecCuboid():
 	@property
 	def volume(self):
 		return self._volume/0.3048**3
+
+	@property
+	def depth(self):
+		return self._depth/0.3048
 	
 	@property
 	def perm(self):

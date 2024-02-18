@@ -12,159 +12,211 @@ from scipy.sparse import csr_matrix as csr
 
 class Tclass():
 
+    gravity = 9.81
+
     def __init__(self,grid):
 
         self.grid = grid
 
-    def delta(self):
-        """Returned delta has the shape of (number of grid, flow dimension x 2),
+        self.set_delta()
+        self.set_perm()
+        self.set_static()
+
+    def set_delta(self):
+        """delta has the shape of (number of grid, flow dimension x 2),
         and the columns are dx_m, dx_p, dy_m, dy_p, dz_m, dz_p."""
 
-        grid = self.grid
+        self._delta = numpy.zeros((self.grid.numtot,self.grid.dimension*2))
 
-        _delta = numpy.zeros((grid.numtot,grid.dimension*2))
+        # self._delta = (self.grid._size+self.grid._size[self.grid.index[:,1:],:])/2
 
-        _delta[:,0] = (grid._size[:,0]+grid._size[grid.index[:,1],0])/2
-        _delta[:,1] = (grid._size[:,0]+grid._size[grid.index[:,2],0])/2
+        self._delta[:,0] = (self.grid._size[:,0]+self.grid._size[self.grid.index[:,1],0])/2
+        self._delta[:,1] = (self.grid._size[:,0]+self.grid._size[self.grid.index[:,2],0])/2
 
-        if grid.dimension>1:
-            _delta[:,2] = (grid._size[:,1]+grid._size[grid.index[:,3],1])/2
-            _delta[:,3] = (grid._size[:,1]+grid._size[grid.index[:,4],1])/2
+        if self.grid.dimension>1:
+            self._delta[:,2] = (self.grid._size[:,1]+self.grid._size[self.grid.index[:,3],1])/2
+            self._delta[:,3] = (self.grid._size[:,1]+self.grid._size[self.grid.index[:,4],1])/2
 
-        if grid.dimension>2:
-            _delta[:,4] = (grid._size[:,2]+grid._size[grid.index[:,5],2])/2
-            _delta[:,5] = (grid._size[:,2]+grid._size[grid.index[:,6],2])/2
+        if self.grid.dimension>2:
+            self._delta[:,4] = (self.grid._size[:,2]+self.grid._size[self.grid.index[:,5],2])/2
+            self._delta[:,5] = (self.grid._size[:,2]+self.grid._size[self.grid.index[:,6],2])/2
 
-        return _delta
-
-    def perm(self,delta=None):
-        """Returned perm has the shape of (number of grid, flow dimension x 2),
+    def set_perm(self):
+        """perm has the shape of (number of grid, flow dimension x 2),
         and the columns are kx_m, kx_p, ky_m, ky_p, kz_m, kz_p."""
 
-        grid = self.grid
+        self._perm = numpy.zeros((self.grid.numtot,self.grid.dimension*2))
 
-        delta = self.delta() if delta is None else delta
+        self._perm[:,0] = (2*self._delta[:,0])/(self.grid._size[:,0]/self.grid._perm[:,0]+
+            self.grid._size[self.grid.index[:,1],0]/self.grid._perm[self.grid.index[:,1],0])
+        self._perm[:,1] = (2*self._delta[:,1])/(self.grid._size[:,0]/self.grid._perm[:,0]+
+            self.grid._size[self.grid.index[:,2],0]/self.grid._perm[self.grid.index[:,2],0])
 
-        _perm = numpy.zeros((grid.numtot,grid.dimension*2))
+        if self.grid.dimension>1:
+            self._perm[:,2] = (2*self._delta[:,2])/(self.grid._size[:,1]/self.grid._perm[:,1]+
+                self.grid._size[self.grid.index[:,3],1]/self.grid._perm[self.grid.index[:,3],1])
+            self._perm[:,3] = (2*self._delta[:,3])/(self.grid._size[:,1]/self.grid._perm[:,1]+
+                self.grid._size[self.grid.index[:,4],1]/self.grid._perm[self.grid.index[:,4],1])
 
-        _perm[:,0] = (2*delta[:,0])/(grid._size[:,0]/grid._perm[:,0]+
-            grid._size[grid.index[:,1],0]/grid._perm[grid.index[:,1],0])
-        _perm[:,1] = (2*delta[:,1])/(grid._size[:,0]/grid._perm[:,0]+
-            grid._size[grid.index[:,2],0]/grid._perm[grid.index[:,2],0])
+        if self.grid.dimension>2:
+            self._perm[:,4] = (2*self._delta[:,4])/(self.grid._size[:,2]/self.grid._perm[:,2]+
+                self.grid._size[self.grid.index[:,5],2]/self.grid._perm[self.grid.index[:,5],2])
+            self._perm[:,5] = (2*self._delta[:,5])/(self.grid._size[:,2]/self.grid._perm[:,2]+
+                self.grid._size[self.grid.index[:,6],2]/self.grid._perm[self.grid.index[:,6],2])
 
-        if grid.dimension>1:
-            _perm[:,2] = (2*delta[:,2])/(grid._size[:,1]/grid._perm[:,1]+
-                grid._size[grid.index[:,3],1]/grid._perm[grid.index[:,3],1])
-            _perm[:,3] = (2*delta[:,3])/(grid._size[:,1]/grid._perm[:,1]+
-                grid._size[grid.index[:,4],1]/grid._perm[grid.index[:,4],1])
+    def self_static(self):
+        """static part of the transmissibility values,
+        has the shape of (number of grids, flow dimension x 2)."""
+        self._static = (self._perm*self.grid._area)/(self._delta)
 
-        if grid.dimension>2:
-            _perm[:,4] = (2*delta[:,4])/(grid._size[:,2]/grid._perm[:,2]+
-                grid._size[grid.index[:,5],2]/grid._perm[grid.index[:,5],2])
-            _perm[:,5] = (2*delta[:,5])/(grid._size[:,2]/grid._perm[:,2]+
-                grid._size[grid.index[:,6],2]/grid._perm[grid.index[:,6],2])
+    def array(self,fluid):
+        """transmissibility arrays of the size (number of grids, flow dimension x 2)"""
+        return self._static/fluid._viscosity
 
-        return _perm
+    def Tmatrix(self,array):
 
-    def array(self,fluid,delta=None,perm=None):
+        tmatrix = csr(self.shape)
 
-        grid = self.grid
+        tmatrix = self.utility(tmatrix,0,array)
+        tmatrix = self.utility(tmatrix,1,array)
 
-        delta = self.delta() if delta is None else delta
+        if self.grid.dimension>1:
+            tmatrix = self.utility(tmatrix,2,array)
+            tmatrix = self.utility(Tmatrix,3,array)
 
-        perm = self.perm(delta) if perm is None else perm
+        if self.grid.dimension>2:
+            tmatrix = self.utility(tmatrix,4,array)
+            tmatrix = self.utility(tmatrix,5,array)
 
-        # transmissibility[:,0] = (perm[:,0]*grid._area[:,0])/(fluid._viscosity*dx_m)
-        # transmissibility[:,1] = (perm[:,1]*grid._area[:,1])/(fluid._viscosity*dx_p)
-        # transmissibility[:,2] = (perm[:,2]*grid._area[:,2])/(fluid._viscosity*dy_m)
-        # transmissibility[:,3] = (perm[:,3]*grid._area[:,3])/(fluid._viscosity*dy_p)
-        # transmissibility[:,4] = (perm[:,4]*grid._area[:,4])/(fluid._viscosity*dz_m)
-        # transmissibility[:,5] = (perm[:,5]*grid._area[:,5])/(fluid._viscosity*dz_p)
+        return tmatrix
 
-        return (perm*grid._area)/(fluid._viscosity*delta) # transmissibility
+    def Jmatrix(self,array,*columns):
+        """
+        array   : transmissibility array of size (number of grids, flow dimension x 2)
+        columns : integer indicating the direction where the
+            constant pressure boundary condition is implemented:
 
-    def matrix(self,fluid,delta=None,perm=None):
+            0   : xmin direction
+            1   : xmax direction
+            2   : ymin direction
+            3   : ymax direction
+            4   : zmin direction
+            5   : zmax direction
 
-        grid = self.grid
+        Return J matrix filled with 2 x transmissibility values.
 
-        delta = self.delta() if delta is None else delta
-        
-        perm = self.perm(delta) if perm is None else perm
+        """
 
-        array = self.array(fluid,delta,perm)
+        jmatrix = csr(self.shape)
 
-        indices = grid.index
+        for column in columns:
 
-        noxmin = ~(indices[:,0]==indices[:,1])
-        noxmax = ~(indices[:,0]==indices[:,2])
+            fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
 
-        if grid.dimension>1:
-            noymin = ~(indices[:,0]==indices[:,3])
-            noymax = ~(indices[:,0]==indices[:,4])
+            indices = (self.grid.index[fringes,0],self.grid.index[fringes,0])
 
-        if grid.dimension>2:
-            nozmin = ~(indices[:,0]==indices[:,5])
-            nozmax = ~(indices[:,0]==indices[:,6])
+            jmatrix += csr((2*array[fringes,column],indices),shape=self.shape)
 
-        id_noxmin = indices[noxmin,0] #index of grid not at xmin boundary
-        id_noxmax = indices[noxmax,0] #index of grid not at xmax boundary
+        return jmatrix
 
-        if grid.dimension>1:
-            id_noymin = indices[noymin,0] #index of grid not at ymin boundary
-            id_noymax = indices[noymax,0] #index of grid not at ymax boundary
+    def Amatrix(self,tstep):
 
-        if grid.dimension>2:
-            id_nozmin = indices[nozmin,0] #index of grid not at zmin boundary
-            id_nozmax = indices[nozmax,0] #index of grid not at zmax boundary
+        pore_volume = self.grid._volume*self.grid._poro
 
-        idNnoxmin = indices[noxmin,1] #index of xmin neighbors for id_noxmin grid
-        idNnoxmax = indices[noxmax,2] #index of xmax neighbors for id_noxmax grid
+        return diags(pore_volume.flatten()/tstep)
 
-        if grid.dimension>1:
-            idNnoymin = indices[noymin,3] #index of ymin neighbors for id_noymin grid
-            idNnoymax = indices[noymax,4] #index of ymax neighbors for id_noymax grid
+    def Qvector(self,array,*pconst):
+        """
+        array    : transmissibility array of size (number of grids, flow dimension x 2)
+        pconst   : constant pressure boundary condition tuple (column,pressure)
+        columns  : integer indicating the direction where the
+            constant pressure boundary condition is implemented:
 
-        if grid.dimension>2:
-            idNnozmin = indices[nozmin,5] #index of zmin neighbors for id_nozmin grid
-            idNnozmax = indices[nozmax,6] #index of zmax neighbors for id_nozmax grid
+            0    : xmin direction
+            1    : xmax direction
+            2    : ymin direction
+            3    : ymax direction
+            4    : zmin direction
+            5    : zmax direction
 
-        shape = (grid.numtot,grid.numtot)
+        pressure : the value of the constant pressure in psi.
 
-        Tmatrix = csr(shape)
+        Return Q vector filled with 2 x transmissibility x pressure values.
 
-        Tmatrix -= csr((array[noxmin,0],(id_noxmin,idNnoxmin)),shape=shape)
-        Tmatrix += csr((array[noxmin,0],(id_noxmin,id_noxmin)),shape=shape)
-        Tmatrix -= csr((array[noxmax,1],(id_noxmax,idNnoxmax)),shape=shape)
-        Tmatrix += csr((array[noxmax,1],(id_noxmax,id_noxmax)),shape=shape)
+        """
 
-        if grid.dimension>1:
-            Tmatrix -= csr((array[noymin,2],(id_noymin,idNnoymin)),shape=shape)
-            Tmatrix += csr((array[noymin,2],(id_noymin,id_noymin)),shape=shape)
-            Tmatrix -= csr((array[noymax,3],(id_noymax,idNnoymax)),shape=shape)
-            Tmatrix += csr((array[noymax,3],(id_noymax,id_noymax)),shape=shape)
-        
-        if grid.dimension>2:
-            Tmatrix -= csr((array[nozmin,4],(id_nozmin,idNnozmin)),shape=shape)
-            Tmatrix += csr((array[nozmin,4],(id_nozmin,id_nozmin)),shape=shape)
-            Tmatrix -= csr((array[nozmax,5],(id_nozmax,idNnozmax)),shape=shape)
-            Tmatrix += csr((array[nozmax,5],(id_nozmax,id_nozmax)),shape=shape)
+        shape = (self.grid.numtot,1)
 
-        return Tmatrix
+        qvector = csr(shape)
+
+        for column,pressure in pconst:
+
+            fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
+
+            indices = (self.grid.index[fringes,0],numpy.zeros(fringes.size))
+
+            qvector += csr((2*array[fringes,column]*pressure*6894.76,indices),shape=shape)
+
+        return qvector
+
+    def Gvector(self,array,fluid):
+
+        return fluid.density*self.gravity*self.Tmatrix(array).dot(self.grid._depth)
+
+    @property
+    def shape(self):
+        return (self.grid.numtot,self.grid.numtot)
+    
+    def utility(self,tmatrix:csr,column:int,array:numpy.ndarray):
+        """
+        Returns updated transmissibility matrix:
+
+        tmatrix : csr_matrix object defined for transmissibility matrix
+ 
+        column  : integer indicating the direction:
+            0   : xmin direction
+            1   : xmax direction
+            2   : ymin direction
+            3   : ymax direction
+            4   : zmin direction
+            5   : zmax direction
+
+        array   : transmissibility array with the size of
+                  (number of grids, 2*dimension) and float type
+
+        The transmissibility matrix is updated for:
+
+        1. transmissibility matrix diagonal entries 
+        2. transmissibility matrix offset entries
+
+        """
+        notOnBorder = ~(self.grid.index[:,0]==self.grid.index[:,column+1])
+
+        # indices of grids not located at the border for the given direction
+        diag_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,0])
+
+        # indices of neighbor grids in that direction
+        offs_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,column+1])
+
+        tmatrix += csr((array[notOnBorder,column],diag_indices),shape=tmatrix.shape)
+        tmatrix -= csr((array[notOnBorder,column],offs_indices),shape=tmatrix.shape)
+
+        return tmatrix
 
 class MixedSolver():
     """
     This class solves for single phase reservoir flow in Rectangular Grid.
     """
 
-    def __init__(self,grid,fluid,wells=None,theta=0):
+    def __init__(self,grid,fluid,well=None,theta=0):
         """
-        grid : It is a RecCuboid (rectangular cuboid) object.
+        grid  : It is a RecCuboid (rectangular cuboid) object.
 
         fluid : There is only one mobile phase in the system. There can be
             two slightly compressible fluids where the second one is at irreducible
             saturation, not mobile.
         
-        wells : well schedule object.
+        well  : well schedule object.
 
         theta : solution type determined in the mixed solver
             when theta = 0, it reduces to Implicit method
@@ -175,10 +227,30 @@ class MixedSolver():
 
         self.grid  = grid
         self.fluid = fluid
-        self.wells = wells
+        self.well  = well
+
         self.theta = theta
 
         self.tclass = Tclass(self.grid)
+
+    def set_time(self,tstep:float,total:float=None,nstep:int=1):
+        """
+        tstep   : time step defined in days
+        total   : total simulation time defined in days
+        nstep   : number of time steps
+        """
+
+        self._tstep = tstep*24*60*60
+
+        if total is None:
+            self._ttime = self._tstep*nstep
+            self._nstep = nstep
+        else:
+            self._ttime = total*24*60*60
+            self._nstep = int(self._ttime/self._tstep)
+
+        self._time = numpy.arange(
+            self._tstep,self._ttime+self._tstep/2,self._tstep)
 
     def initialize(self,pressure,Swirr=0,ctotal=None):
         """Initializing the reservoir pressure
@@ -186,7 +258,7 @@ class MixedSolver():
         pressure    : initial pressure in psi
         ctotal      : total compressibility 1/psi
         """
-        self._pinit = np.ones((self.grid.numtot,1))*pressure*6894.76
+        self._pinit = numpy.ones((self.grid.numtot,1))*pressure*6894.76
 
         # self.Sw = Swirr
         # self.So = 1-self.Sw
@@ -197,61 +269,9 @@ class MixedSolver():
 
         self._ctotal = ctotal/6894.76
 
-    def set_time(self,step:float,total:float):
-        """
-        step    : time step defined in days
-        total   : total simulation time defined in days
-        """
+        self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
 
-        self._dtime = step*24*60*60
-        self._ttime = total*24*60*60
-
-        self._times = np.arange(self._dtime,self._ttime+self._dtime,self._dtime)
-
-        self._pressure = np.zeros((self.grid.numtot,self._times.size))
-
-        self._pressure[:,0] = self._pinit
-
-    def set_Tmatrix(self):
-
-        self._T = self.tclass.matrix(self.fluid)
-
-    def set_Jmatrix(self):
-
-        coeff = np.asarray(2*self._trans[-1,0]).flatten()
-        index = np.asarray(self.grid.numtot-1).flatten()
-
-        J = csr((coeff,(index,index)),shape=self.shape)
-
-        self._J = J
-
-    def set_Amatrix(self):
-        
-        self._dt = dt*(24*60*60)
-
-        coeff = (self.grid._area[:,0].reshape((-1,1))*self.grid._size*self.grid._poro.reshape((-1,1)))/(self._dt)
-
-        A = csr((coeff[:,0],(self.grid.index[:,0],self.grid.index[:,0])),shape=self.shape)
-
-        self._A = A
-
-        self._Act = self._A*self._ct
-
-    def set_Qvector(self,Pbound):
-        """Pbound in psi"""
-
-        shape = (self.grid.numtot,1)
-
-        coeff = np.asarray(2*self._trans[-1,0]*Pbound*6894.76).flatten()
-        index = np.asarray(self.grid.numtot-1).flatten()
-
-        Q = csr((coeff,(index,np.asarray(0).flatten())),shape=shape)
-
-        self._Q = Q
-
-    def set_Gvector(self):
-
-        pass
+        self._pressure[:,0] = self._pinit.flatten()
 
     def solve(self,timesteps):
 
@@ -262,6 +282,8 @@ class MixedSolver():
         Psol = np.zeros((self.grid.numtot,timesteps))
         
         for k in range(timesteps):
+
+            # array = self.tclass.array(self.fluid)
             
             RHS = csr.dot(self._Act,P)+self._Q
             
@@ -334,15 +356,19 @@ class MixedSolver():
 
     @property
     def dtime(self):
-        return self._dtime/(24*60*60)
+        return self._tstep/(24*60*60)
 
     @property
     def ttime(self):
         return self._ttime/(24*60*60)
 
     @property
-    def times(self):
-        return self._times/(24*60*60)
+    def nstep(self):
+        return self._nstep
+    
+    @property
+    def time(self):
+        return self._time/(24*60*60)
 
     @property
     def pressure(self):
@@ -357,13 +383,17 @@ class MixedSolver():
         return self._J*24*60*60*6894.76*3.28084**3
 
     @property
-    def Act(self):
-        return self._Act*24*60*60*6894.76*3.28084**3
+    def A(self):
+        return self._A*24*60*60*3.28084**3
 
     @property
     def Q(self):
         return self._Q*24*60*60*3.28084**3
 
+    @property
+    def G(self):
+        return self._G
+    
 def newton_solver(grid,timestep,timesteps,T,J,Q):
 
     array = np.zeros((grid.numtot,timesteps))
