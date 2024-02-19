@@ -1,3 +1,5 @@
+from dataclasses import dataclass,field
+
 import matplotlib.pyplot as plt
 
 import numpy
@@ -195,84 +197,56 @@ class Tclass():
 
     def Gvector(self,array,fluid):
 
-        return fluid._density*self.gravity*self.Tmatrix(array).dot(self.grid._depth)
+        return fluid._density*self._gravity*self.Tmatrix(array).dot(self.grid._depth)
 
     @property
-    def gravity(self):
+    def _gravity(self):
         return 9.807
 
     @property
     def shape(self):
         return (self.grid.numtot,self.grid.numtot)
 
-    @staticmethod
-    def toSI(value):
-        """Converts transmissibility value from
-        Oil Field Units to SI Units."""
-        return value/(3.28084**3*(24*60*60)*6894.76)
-
-    @staticmethod
-    def toFU(value):
-        """Converts transmissibility value from
-        SI Units to Oil Field Units."""
-        return value*(3.28084**3*(24*60*60)*6894.76)
-
-class Well:
-
-    def __init__(self,name:str,block:tuple,sort:str,radius:float,skin:float):
-        """It is a well dictionary used in the simulator.
-        
-        name    : name of the well
-        block   : block indices containing the well 
-        sort    : vertical or horizontal
-
-        raidus  : well radius, ft
-        skin    : skin factor of the well, dimensionless
-
-        """
-        self._name   = name
-        self._block  = block
-        self._sort   = sort
-
-        self._radius = radius*0.3048
-        self._skin   = skin
-
-        self._conds  = []
-
-    def add(self,cond:str,value:float,time:float=0):
-        """Adds a well condition to the conds property of the well:
-
-        cond    : constant RATE or constant BHP
-        value   : the value of constant RATE or BHP
-        time    : the time for implementing the condition, days
-        """
-        self._conds.append((cond,value,time*24*60*60))
+    @property
+    def field2si(self):
+        """Conversion factor for transmissibility value,
+        from Oil Field Units to SI Units."""
+        return 1/(3.28084**3*(24*60*60)*6894.76)
 
     @property
-    def name(self):
-        return self._name
+    def si2field(self):
+        """Conversion factor for transmissibility value,
+        from SI Units to Oil Field Units."""
+        return (3.28084**3*(24*60*60)*6894.76)
 
-    @property
-    def block(self):
-        return self._block
+@dataclass(frozen=True)
+class WellCondition:        # bottom hole conditions
+    time    : float         # the time for implementing the condition, days
+    status  : str           # status of the well, open or shut
+    bhp     : float = None  # constant bottom hole pressure if that is the control
+    orate   : float = None  # constant oil rate if that is the control
+    wrate   : float = None  # constant water rate if that is the control
+    grate   : float = None  # constant gas rate if that is the control
 
-    @property
-    def sort(self):
-        return self._sort
+@dataclass(frozen=True)
+class Well:                 # It is a well dictionary used in the simulator
+    name    : str           # name of the well
+    block   : tuple         # block indices containing the well 
+    sort    : str           # vertical or horizontal
 
-    @property
-    def radius(self):
-        return self._radius
+    radius  : float         # well radius, ft
+    skin    : float = 0     # skin factor of the well, dimensionless
 
-    @property
-    def skin(self):
-        return self._skin
+    conds   : list  = field(default_factory=list)
 
-    @property
-    def conds(self):
-        return self._conds  
+    def __post_init__(self):
+        object.__setattr__(self,'_radius',self.radius*0.3048)
 
-class MixedSolver():
+    def add(self,*args,**kwargs):
+        """Adds a bottom hole condition to the conds property"""
+        self.conds.append(WellCondition(*args,**kwargs)) 
+
+class MixedSolver(Tclass):
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
@@ -294,13 +268,12 @@ class MixedSolver():
 
         """
 
-        self.grid  = grid
+        super().__init__(grid)
+
         self.fluid = fluid
         self.well  = well
 
         self.theta = theta
-
-        self.tclass = Tclass(self.grid)
 
     def set_time(self,tstep:float,total:float=None,nstep:int=1):
         """
@@ -334,7 +307,7 @@ class MixedSolver():
 
         depth_diff = (self.grid._depth-depth*0.3048)
 
-        hydro_diff = self.fluid._density*self.tclass.gravity*depth_diff
+        hydro_diff = self.fluid._density*self._gravity*depth_diff
 
         self._pinit = pressure*6894.76+hydro_diff
 
@@ -344,15 +317,15 @@ class MixedSolver():
 
     def solve(self,pconsts):
 
-        array = self.tclass.array(self.fluid)
+        array = self.array(self.fluid)
 
         P = self._pinit
 
-        T = self.tclass.Tmatrix(array)
-        J = self.tclass.Jmatrix(array,*pconsts)
-        A = self.tclass.Amatrix(self._tstep)
-        Q = self.tclass.Qvector(array,*pconsts)
-        G = self.tclass.Gvector(array,self.fluid)
+        T = self.Tmatrix(array)
+        J = self.Jmatrix(array,*pconsts)
+        A = self.Amatrix(self._tstep)
+        Q = self.Qvector(array,*pconsts)
+        G = self.Gvector(array,self.fluid)
         
         for k in range(self.nstep):
 
@@ -399,10 +372,6 @@ class MixedSolver():
         return Pwf
 
     @property
-    def shape(self):
-        return (self.grid.numtot,self.grid.numtot)
-
-    @property
     def pinit(self):
         return self._pinit/6894.76
 
@@ -429,6 +398,14 @@ class MixedSolver():
     @property
     def pressure(self):
         return self._pressure/6894.76
+
+    @property
+    def pa2psi(self):
+        return 1/6894.76
+
+    @property
+    def psi2pa(self):
+        return 6894.76
     
 def newton_solver(grid,timestep,timesteps,T,J,Q):
 
@@ -509,6 +486,12 @@ def picard_solver(grid,timestep,timesteps,T,J,Q):
     return array
 
 if __name__ == "__main__":
+
+    # well = Well('RS',5,'vertical',0.3)
+
+    # well.add(5,'open',orate=127)
+
+    # print(well.conds)
 
     import unittest
 
