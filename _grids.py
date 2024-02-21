@@ -356,7 +356,7 @@ class RecCuboid():
 		width:float=None,
 		height:float=None,
 		num:tuple=None,
-		dim:int=None):
+		flodim:int=None):
 		"""Three-dimensional reservoir model can be initialized in two different ways:
 		
 		Method 1:
@@ -375,7 +375,7 @@ class RecCuboid():
 
 		Other Inputs:
 
-		dim 	: flow dimension it can be 1, 2, or 3
+		flodim 	: flow dimension it can be 1, 2, or 3
 
 		The object has methods to calculate the control volume implementation parameters.
 
@@ -389,26 +389,27 @@ class RecCuboid():
 		# The parameters starting with underscore are defined in SI units.
 		# The same parameters without underscore are in Oil Field units.
 
-		if dim is not None:
-			self.dimension = dim
+		if flodim is not None:
+			self.flodim = flodim
 		elif self._num[2]>1:
-			self.dimension = 3
+			self.flodim = 3
 		elif self._num[1]>1:
-			self.dimension = 2
+			self.flodim = 2
 		else:
-			self.dimension = 1
+			self.flodim = 1
 
-		self.set_index()
-		self.set_size()
+		self.set_gplat()
+
+		self.set_dims()
 		self.set_area()
 		self.set_volume()
 
 	def init1(self,xdelta,ydelta,zdelta):
 		"""Initialization with the first method."""
 
-		self._xdelta = numpy.asarray(xdelta).astype(numpy.float64)*0.3048
-		self._ydelta = numpy.asarray(ydelta).astype(numpy.float64)*0.3048
-		self._zdelta = numpy.asarray(zdelta).astype(numpy.float64)*0.3048
+		self._xdelta = numpy.asarray(xdelta).astype(numpy.float_)*0.3048
+		self._ydelta = numpy.asarray(ydelta).astype(numpy.float_)*0.3048
+		self._zdelta = numpy.asarray(zdelta).astype(numpy.float_)*0.3048
 
 		self._length = self._xdelta.sum()
 		self._width  = self._ydelta.sum()
@@ -429,24 +430,24 @@ class RecCuboid():
 
 		self._num 	 = num
 
-	def set_index(self):
-
-		idx = numpy.arange(self.numtot)
+	def set_gplat(self):
 
 		num = self._num
 
-		self.index = numpy.tile(idx,(1+self.dimension*2,1)).T
+		idx = numpy.arange(self.numtot,dtype=numpy.int_)
 
-		self.index[idx.reshape(-1,num[0])[:,1:].ravel(),1] -= 1
-		self.index[idx.reshape(-1,num[0])[:,:-1].ravel(),2] += 1
+		self.gplat = numpy.tile(idx,(1+self.flodim*2,1)).T
 
-		if self.dimension>1:
-			self.index[idx.reshape(num[2],-1)[:,num[0]:],3] -= num[0]
-			self.index[idx.reshape(num[2],-1)[:,:-num[0]],4] += num[0]
+		self.gplat[idx.reshape(-1,num[0])[:,1:].ravel(),1] -= 1
+		self.gplat[idx.reshape(-1,num[0])[:,:-1].ravel(),2] += 1
 
-		if self.dimension>2:
-			self.index[idx.reshape(num[2],-1)[1:,:],5] -= num[0]*num[1]
-			self.index[idx.reshape(num[2],-1)[:-1,:],6] += num[0]*num[1]
+		if self.flodim>1:
+			self.gplat[idx.reshape(num[2],-1)[:,num[0]:],3] -= num[0]
+			self.gplat[idx.reshape(num[2],-1)[:,:-num[0]],4] += num[0]
+
+		if self.flodim>2:
+			self.gplat[idx.reshape(num[2],-1)[1:,:],5] -= num[0]*num[1]
+			self.gplat[idx.reshape(num[2],-1)[:-1,:],6] += num[0]*num[1]
 
 	def set_xaxis(self):
 
@@ -475,35 +476,33 @@ class RecCuboid():
 
 		self._zaxis = (side1+side2)/2
 
-	def set_size(self):
+	def set_dims(self):
+		"""should be depreciated later"""
 
-		self._size = numpy.zeros((self.numtot,3))
+		self._dims = numpy.zeros((self.numtot,3))
 
-		self._size[:,0] = numpy.tile(self._xdelta,self._num[1]*self._num[2])
+		self._dims[:,0] = numpy.tile(self._xdelta,self._num[1]*self._num[2])
 
-		self._size[:,1] = numpy.tile(
+		self._dims[:,1] = numpy.tile(
 			numpy.repeat(self._ydelta,self._num[0]),self._num[2])
 
-		self._size[:,2] = numpy.repeat(self._zdelta,self._num[0]*self._num[1])
+		self._dims[:,2] = numpy.repeat(self._zdelta,self._num[0]*self._num[1])
 
 	def set_area(self):
 
-		self._area = numpy.zeros((self.numtot,self.dimension*2))
+		self._area = numpy.zeros((self.numtot,self.flodim))
 
-		self._area[:,0] = self._size[:,1]*self._size[:,2]
-		self._area[:,1] = self._size[:,1]*self._size[:,2]
+		self._area[:,0] = self._dims[:,1]*self._dims[:,2]
 
-		if self.dimension>1:
-			self._area[:,2] = self._size[:,2]*self._size[:,0]
-			self._area[:,3] = self._size[:,2]*self._size[:,0]
+		if self.flodim>1:
+			self._area[:,1] = self._dims[:,2]*self._dims[:,0]
 
-		if self.dimension>2:
-			self._area[:,4] = self._size[:,0]*self._size[:,1]
-			self._area[:,5] = self._size[:,0]*self._size[:,1]
+		if self.flodim>2:
+			self._area[:,2] = self._dims[:,0]*self._dims[:,1]
 
 	def set_volume(self):
 
-		self._volume = numpy.prod(self._size,axis=1).reshape((-1,1))
+		self._volume = numpy.prod(self._dims,axis=1).reshape((-1,1))
 
 	def get_property(self,quality,conversion_factor=1.,dtype=None):
 
@@ -521,28 +520,28 @@ class RecCuboid():
 
 	def set_depth(self,depth):
 
-		self._depth = self.get_property(depth,conversion_factor=0.3048,dtype=numpy.float64)
+		self._depth = self.get_property(depth,conversion_factor=0.3048,dtype=numpy.float_)
 
 	def set_porosity(self,porosity):
 		"""porosity in fractions"""
 
-		self._poro = self.get_property(porosity,dtype=numpy.float64)
+		self._poro = self.get_property(porosity,dtype=numpy.float_)
 
 	def set_permeability(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
 		"""xperm in mD"""
 
 		_xperm = self.get_property(
-			xperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+			xperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
 
 		if yperm is not None:
 			_yperm = self.get_property(
-				yperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+				yperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
 		else:
 			_yperm = _xperm*yreduce
 
 		if zperm is not None:
 			_zperm = self.get_property(
-				zperm,conversion_factor=9.869233e-16,dtype=numpy.float64)
+				zperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
 		else:
 			_zperm = _xperm*zreduce
 
@@ -599,8 +598,8 @@ class RecCuboid():
 		return self._zaxis/0.3048
 
 	@property
-	def size(self):
-		return self._size/0.3048
+	def dims(self):
+		return self._dims/0.3048
 
 	@property
 	def area(self):
@@ -621,7 +620,148 @@ class RecCuboid():
 	@property
 	def poro(self):
 		return self._poro
+
+	@property
+	def xmin(self):
+		"""Properties of grids on x-minimum boundary"""
+		return RecCuboidDir(self,1,edge=True,hood=True)
+
+	@property
+	def xneg0(self):
+		"""Properties of grids that has x-negative neighbors"""
+		return RecCuboidDir(self,1,hood=True)
+
+	@property
+	def xneg1(self):
+		"""Neighbor properties of grids that has x-negative neighbors"""
+		return RecCuboidDir(self,1)
+
+	@property
+	def xmax(self):
+		"""Properties of grids on x-maximum boundary"""
+		return RecCuboidDir(self,2,edge=True,hood=True)
+
+	@property
+	def xpos0(self):
+		"""Properties of grids that has x-positive neighbors"""
+		return RecCuboidDir(self,2,hood=True)
+
+	@property
+	def xpos1(self):
+		"""Neighbor properties of grids that has x-positive neighbors"""
+		return RecCuboidDir(self,2)
+
+	@property
+	def ymin(self):
+		"""Properties of grids on y-minimum boundary"""
+		if self.flodim>1:
+			return RecCuboidDir(self,3,edge=True,hood=True)
+
+	@property
+	def yneg0(self):
+		"""Properties of grids that has y-negative neighbors"""
+		if self.flodim>1:
+			return RecCuboidDir(self,3,hood=True)
+
+	@property
+	def yneg1(self):
+		"""Neighbor properties of grids that has y-negative neighbors"""
+		if self.flodim>1:
+			return RecCuboidDir(self,3)
+
+	@property
+	def ymax(self):
+		"""Properties of grids on y-maximum boundary"""
+		if self.flodim>1:
+			return RecCuboidDir(self,4,edge=True,hood=True)
+
+	@property
+	def ypos0(self):
+		"""Properties of grids that has y-positive neighbors"""
+		if self.flodim>1:
+			return RecCuboidDir(self,4,hood=True)
 	
+	@property
+	def ypos1(self):
+		"""Neighbor properties of grids that has y-positive neighbors"""
+		if self.flodim>1:
+			return RecCuboidDir(self,4)
+
+	@property
+	def zmin(self):
+		"""Properties of grids on z-minimum boundary"""
+		if self.flodim>2:
+			return RecCuboidDir(self,5,edge=True,hood=True)
+
+	@property
+	def zneg0(self):
+		"""Properties of grids that has z-negative neighbors"""
+		if self.flodim>2:
+			return RecCuboidDir(self,5,hood=True)
+
+	@property
+	def zneg1(self):
+		"""Neighbor properties of grids that has z-negative neighbors"""
+		if self.flodim>2:
+			return RecCuboidDir(self,5)
+
+	@property
+	def zmax(self):
+		"""Properties of grids on z-maximum boundary"""
+		if self.flodim>2:
+			return RecCuboidDir(self,6,edge=True,hood=True)
+
+	@property
+	def zpos0(self):
+		"""Properties of grids that has z-positive neighbors"""
+		if self.flodim>2:
+			return RecCuboidDir(self,6,hood=True)
+
+	@property
+	def zpos1(self):
+		"""Neighbor properties of grids that has z-positive neighbors"""
+		if self.flodim>2:
+			return RecCuboidDir(self,6)
+
+class RecCuboidDir(numpy.ndarray):
+
+	def __new__(cls,grid,path,edge=False,hood=False):
+		"""
+		grid 	: RecCuboid instance
+		path 	: direction (1: west, 2: east, 3: south, 4: north, 5: down, 6: up)
+		edge 	: boundary (True) or inner (False)
+		hood 	: self (True) or neighbor (False)
+		"""
+
+		item = (grid.gplat[:,0]==grid.gplat[:,path])
+
+		if not edge:
+			item = ~item
+
+		_path = 0 if hood else path
+
+		obj = numpy.asarray(grid.gplat[item,_path],dtype=numpy.int_).view(cls)
+
+		obj.grid = grid
+
+		obj.path = path
+
+		obj.axis = int((path-1)/2)
+
+		return obj
+
+	def __array_finalize__(self,obj):
+
+		if obj is None: return
+
+		self.grid = getattr(obj,'grid',None)
+		self.path = getattr(obj,'path',None)
+		self.axis = getattr(obj,'axis',None)
+
+	def __getattr__(self,key):
+
+		return getattr(self.grid,key)[self,self.axis]
+
 if __name__ == "__main__":
 
 	# cells = Hexahedron(
@@ -648,9 +788,21 @@ if __name__ == "__main__":
 
 	# print(cells.volume)
 
-	grids = RecCuboid((4,1,1))
+	# grids = RecCuboid((4,1,1))
 
-	print(grids.index)
+	# print(grids.gplat)
 	# print(grids.area)
 	# print(grids.zaxis)
 	# print(grids.volume)
+
+	grid = RecCuboid((750,1000,1250),(750,1000,1250),(20,))
+
+	# print(grid.size)
+
+	# print(grid.size_test)
+
+	# print(grid.size_test.ypos)
+
+	print(grid.xneg1._area)
+
+	# print(area.xmin)

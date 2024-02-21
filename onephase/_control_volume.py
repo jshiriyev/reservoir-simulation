@@ -26,48 +26,48 @@ class Tclass():
         """delta has the shape of (number of grid, flow dimension x 2),
         and the columns are dx_m, dx_p, dy_m, dy_p, dz_m, dz_p."""
 
-        self._delta = numpy.zeros((self.grid.numtot,self.grid.dimension*2))
+        self._delta = numpy.zeros((self.grid.numtot,self.grid.flodim*2))
 
         # self._delta = (self.grid._size+self.grid._size[self.grid.index[:,1:],:])/2
 
-        self._delta[:,0] = (self.grid._size[:,0]+self.grid._size[self.grid.index[:,1],0])/2
-        self._delta[:,1] = (self.grid._size[:,0]+self.grid._size[self.grid.index[:,2],0])/2
+        self._delta[:,0] = (self.grid.xneg0._size+self.grid.xneg1._size)/2
+        self._delta[:,1] = (self.grid.xpos0._size+self.grid.xpos1._size)/2
 
-        if self.grid.dimension>1:
-            self._delta[:,2] = (self.grid._size[:,1]+self.grid._size[self.grid.index[:,3],1])/2
-            self._delta[:,3] = (self.grid._size[:,1]+self.grid._size[self.grid.index[:,4],1])/2
+        if self.grid.flodim>1:
+            self._delta[:,2] = (self.grid.yneg0._size+self.grid.yneg1._size)/2
+            self._delta[:,3] = (self.grid.ypos0._size+self.grid.ypos1._size)/2
 
-        if self.grid.dimension>2:
-            self._delta[:,4] = (self.grid._size[:,2]+self.grid._size[self.grid.index[:,5],2])/2
-            self._delta[:,5] = (self.grid._size[:,2]+self.grid._size[self.grid.index[:,6],2])/2
+        if self.grid.flodim>2:
+            self._delta[:,4] = (self.grid.zneg0._size+self.grid.zneg1._size)/2
+            self._delta[:,5] = (self.grid.zpos0._size+self.grid.zpos1._size)/2
 
     def set_perm(self):
         """perm has the shape of (number of grid, flow dimension x 2),
         and the columns are kx_m, kx_p, ky_m, ky_p, kz_m, kz_p."""
 
-        self._perm = numpy.zeros((self.grid.numtot,self.grid.dimension*2))
+        self._perm = numpy.zeros((self.grid.numtot,self.grid.flodim*2))
 
-        self._perm[:,0] = (2*self._delta[:,0])/(self.grid._size[:,0]/self.grid._perm[:,0]+
-            self.grid._size[self.grid.index[:,1],0]/self.grid._perm[self.grid.index[:,1],0])
-        self._perm[:,1] = (2*self._delta[:,1])/(self.grid._size[:,0]/self.grid._perm[:,0]+
-            self.grid._size[self.grid.index[:,2],0]/self.grid._perm[self.grid.index[:,2],0])
+        self._perm[:,0] = (2*self._delta[:,0])/(self.grid.xneg0._size/self.grid.xneg0._perm+
+            self.grid.xneg1._size/self.grid.xneg1._perm)
+        self._perm[:,1] = (2*self._delta[:,1])/(self.grid.xpos0._size/self.grid.xpos0._perm+
+            self.grid.xpos1._size/self.grid.xpos1._perm)
 
-        if self.grid.dimension>1:
-            self._perm[:,2] = (2*self._delta[:,2])/(self.grid._size[:,1]/self.grid._perm[:,1]+
-                self.grid._size[self.grid.index[:,3],1]/self.grid._perm[self.grid.index[:,3],1])
-            self._perm[:,3] = (2*self._delta[:,3])/(self.grid._size[:,1]/self.grid._perm[:,1]+
-                self.grid._size[self.grid.index[:,4],1]/self.grid._perm[self.grid.index[:,4],1])
+        if self.grid.flodim>1:
+            self._perm[:,2] = (2*self._delta[:,2])/(self.grid.yneg0._size/self.grid.yneg0._perm+
+                self.grid.yneg1._size/self.grid.yneg1._perm)
+            self._perm[:,3] = (2*self._delta[:,3])/(self.grid.ypos0._size/self.grid.ypos0._perm+
+                self.grid.ypos1._size/self.grid.ypos1._perm)
 
-        if self.grid.dimension>2:
-            self._perm[:,4] = (2*self._delta[:,4])/(self.grid._size[:,2]/self.grid._perm[:,2]+
-                self.grid._size[self.grid.index[:,5],2]/self.grid._perm[self.grid.index[:,5],2])
-            self._perm[:,5] = (2*self._delta[:,5])/(self.grid._size[:,2]/self.grid._perm[:,2]+
-                self.grid._size[self.grid.index[:,6],2]/self.grid._perm[self.grid.index[:,6],2])
+        if self.grid.flodim>2:
+            self._perm[:,4] = (2*self._delta[:,4])/(self.grid.zneg0._size/self.grid.zneg0._perm+
+                self.grid.zneg1._size/self.grid.zneg1._perm)
+            self._perm[:,5] = (2*self._delta[:,5])/(self.grid.zpos0._size/self.grid.zpos0._perm+
+                self.grid.zpos1._size/self.grid.zpos1._perm)
 
     def set_static(self):
         """static part of the transmissibility values,
         has the shape of (number of grids, flow dimension x 2)."""
-        self._static = (self._perm*self.grid._area)/(self._delta)
+        self._static = (self._perm*self.grid._area.repeat(2,axis=1))/(self._delta)
 
     def array(self,fluid):
         """transmissibility arrays of the size (number of grids, flow dimension x 2)"""
@@ -80,11 +80,11 @@ class Tclass():
         tmatrix = self.Tcharge(tmatrix,0,array)
         tmatrix = self.Tcharge(tmatrix,1,array)
 
-        if self.grid.dimension>1:
+        if self.grid.flodim>1:
             tmatrix = self.Tcharge(tmatrix,2,array)
             tmatrix = self.Tcharge(tmatrix,3,array)
 
-        if self.grid.dimension>2:
+        if self.grid.flodim>2:
             tmatrix = self.Tcharge(tmatrix,4,array)
             tmatrix = self.Tcharge(tmatrix,5,array)
 
@@ -113,6 +113,7 @@ class Tclass():
         2. transmissibility matrix offset entries
 
         """
+        
         notOnBorder = ~(self.grid.index[:,0]==self.grid.index[:,column+1])
 
         # indices of grids not located at the border for the given direction
