@@ -624,48 +624,38 @@ class RecCuboid():
 	@property
 	def xmin(self):
 		"""Properties of grids on x-minimum boundary"""
-		return RecCuboidDir(self,1,edge=True,hood=True)
+		return RecCuboidDir(self,1,edge=True)
 
 	@property
-	def xneg0(self):
+	def xpos(self):
+		"""Properties of grids that has x-positive neighbors"""
+		return RecCuboidDir(self,2)
+
+	@property
+	def xneg(self):
 		"""Properties of grids that has x-negative neighbors"""
-		return RecCuboidDir(self,1,hood=True)
-
-	@property
-	def xneg1(self):
-		"""Neighbor properties of grids that has x-negative neighbors"""
 		return RecCuboidDir(self,1)
 
 	@property
 	def xmax(self):
 		"""Properties of grids on x-maximum boundary"""
-		return RecCuboidDir(self,2,edge=True,hood=True)
-
-	@property
-	def xpos0(self):
-		"""Properties of grids that has x-positive neighbors"""
-		return RecCuboidDir(self,2,hood=True)
-
-	@property
-	def xpos1(self):
-		"""Neighbor properties of grids that has x-positive neighbors"""
-		return RecCuboidDir(self,2)
+		return RecCuboidDir(self,2,edge=True)
 
 	@property
 	def ymin(self):
 		"""Properties of grids on y-minimum boundary"""
 		if self.flodim>1:
-			return RecCuboidDir(self,3,edge=True,hood=True)
+			return RecCuboidDir(self,3,edge=True)
 
 	@property
-	def yneg0(self):
-		"""Properties of grids that has y-negative neighbors"""
+	def ypos(self):
+		"""Properties of grids that has y-positive neighbors"""
 		if self.flodim>1:
-			return RecCuboidDir(self,3,hood=True)
+			return RecCuboidDir(self,4)
 
 	@property
-	def yneg1(self):
-		"""Neighbor properties of grids that has y-negative neighbors"""
+	def yneg(self):
+		"""Properties of grids that has y-negative neighbors"""
 		if self.flodim>1:
 			return RecCuboidDir(self,3)
 
@@ -673,35 +663,23 @@ class RecCuboid():
 	def ymax(self):
 		"""Properties of grids on y-maximum boundary"""
 		if self.flodim>1:
-			return RecCuboidDir(self,4,edge=True,hood=True)
-
-	@property
-	def ypos0(self):
-		"""Properties of grids that has y-positive neighbors"""
-		if self.flodim>1:
-			return RecCuboidDir(self,4,hood=True)
-	
-	@property
-	def ypos1(self):
-		"""Neighbor properties of grids that has y-positive neighbors"""
-		if self.flodim>1:
-			return RecCuboidDir(self,4)
+			return RecCuboidDir(self,4,edge=True)
 
 	@property
 	def zmin(self):
 		"""Properties of grids on z-minimum boundary"""
 		if self.flodim>2:
-			return RecCuboidDir(self,5,edge=True,hood=True)
+			return RecCuboidDir(self,5,edge=True)
 
 	@property
-	def zneg0(self):
-		"""Properties of grids that has z-negative neighbors"""
+	def zpos(self):
+		"""Properties of grids that has z-positive neighbors"""
 		if self.flodim>2:
-			return RecCuboidDir(self,5,hood=True)
+			return RecCuboidDir(self,6)
 
 	@property
-	def zneg1(self):
-		"""Neighbor properties of grids that has z-negative neighbors"""
+	def zneg(self):
+		"""Properties of grids that has z-negative neighbors"""
 		if self.flodim>2:
 			return RecCuboidDir(self,5)
 
@@ -709,28 +687,15 @@ class RecCuboid():
 	def zmax(self):
 		"""Properties of grids on z-maximum boundary"""
 		if self.flodim>2:
-			return RecCuboidDir(self,6,edge=True,hood=True)
-
-	@property
-	def zpos0(self):
-		"""Properties of grids that has z-positive neighbors"""
-		if self.flodim>2:
-			return RecCuboidDir(self,6,hood=True)
-
-	@property
-	def zpos1(self):
-		"""Neighbor properties of grids that has z-positive neighbors"""
-		if self.flodim>2:
-			return RecCuboidDir(self,6)
+			return RecCuboidDir(self,6,edge=True)
 
 class RecCuboidDir(numpy.ndarray):
 
-	def __new__(cls,grid,path,edge=False,hood=False):
+	def __new__(cls,grid,path,edge=False):
 		"""
 		grid 	: RecCuboid instance
 		path 	: direction (1: west, 2: east, 3: south, 4: north, 5: down, 6: up)
 		edge 	: boundary (True) or inner (False)
-		hood 	: self (True) or neighbor (False)
 		"""
 
 		item = (grid.gplat[:,0]==grid.gplat[:,path])
@@ -738,9 +703,7 @@ class RecCuboidDir(numpy.ndarray):
 		if not edge:
 			item = ~item
 
-		_path = 0 if hood else path
-
-		obj = numpy.asarray(grid.gplat[item,_path],dtype=numpy.int_).view(cls)
+		obj = numpy.asarray(grid.gplat[item,0],dtype=numpy.int_).view(cls)
 
 		obj.grid = grid
 

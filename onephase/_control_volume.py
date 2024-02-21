@@ -14,145 +14,72 @@ from scipy.sparse import csr_matrix as csr
 
 class Tclass():
 
-    def __init__(self,grid):
+    def __init__(self,grid,*pconst):
+        """
+        grid    : RecCuboid instance, rectangular cuboid grids
+        pconst  : constant pressure boundary condition tuple (face,pressure)
+        
+        face    : string indicating the direction where the constant pressure boundary
+                  condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
+        """
 
         self.grid = grid
 
-        self.set_delta()
-        self.set_perm()
-        self.set_static()
+        self.set_static(*pconst)
 
-    def set_delta(self):
-        """delta has the shape of (number of grid, flow dimension x 2),
-        and the columns are dx_m, dx_p, dy_m, dy_p, dz_m, dz_p."""
+    def set_static(self,*pconst):
+        """Self assigns static transmissibility values."""
 
-        self._delta = numpy.zeros((self.grid.numtot,self.grid.flodim*2))
+        self._staticx = self.set_stat_innface('x')
+        self._staticy = self.set_stat_innface('y')
+        self._staticz = self.set_stat_innface('z')
 
-        # self._delta = (self.grid._size+self.grid._size[self.grid.index[:,1:],:])/2
+        self._staticb = []
 
-        self._delta[:,0] = (self.grid.xneg0._size+self.grid.xneg1._size)/2
-        self._delta[:,1] = (self.grid.xpos0._size+self.grid.xpos1._size)/2
+        for face, _ in pconst:
 
-        if self.grid.flodim>1:
-            self._delta[:,2] = (self.grid.yneg0._size+self.grid.yneg1._size)/2
-            self._delta[:,3] = (self.grid.ypos0._size+self.grid.ypos1._size)/2
+            statics = self.set_stat_surface(
+                getattr(self.grid,face)._dims,
+                getattr(self.grid,face)._area,
+                getattr(self.grid,face)._perm)
 
-        if self.grid.flodim>2:
-            self._delta[:,4] = (self.grid.zneg0._size+self.grid.zneg1._size)/2
-            self._delta[:,5] = (self.grid.zpos0._size+self.grid.zpos1._size)/2
+            self._staticb.append(statics)
 
-    def set_perm(self):
-        """perm has the shape of (number of grid, flow dimension x 2),
-        and the columns are kx_m, kx_p, ky_m, ky_p, kz_m, kz_p."""
+    def Tmatrix(self,fluid):
+        """Returns transmissibility matrix with dynamic transmissibility values."""
 
-        self._perm = numpy.zeros((self.grid.numtot,self.grid.flodim*2))
+        tmatrix = csr(self.matrix)
 
-        self._perm[:,0] = (2*self._delta[:,0])/(self.grid.xneg0._size/self.grid.xneg0._perm+
-            self.grid.xneg1._size/self.grid.xneg1._perm)
-        self._perm[:,1] = (2*self._delta[:,1])/(self.grid.xpos0._size/self.grid.xpos0._perm+
-            self.grid.xpos1._size/self.grid.xpos1._perm)
+        tmatrix = self.tcharge('x',fluid,tmatrix)
 
         if self.grid.flodim>1:
-            self._perm[:,2] = (2*self._delta[:,2])/(self.grid.yneg0._size/self.grid.yneg0._perm+
-                self.grid.yneg1._size/self.grid.yneg1._perm)
-            self._perm[:,3] = (2*self._delta[:,3])/(self.grid.ypos0._size/self.grid.ypos0._perm+
-                self.grid.ypos1._size/self.grid.ypos1._perm)
+            tmatrix = self.tcharge('y',fluid,tmatrix)
 
         if self.grid.flodim>2:
-            self._perm[:,4] = (2*self._delta[:,4])/(self.grid.zneg0._size/self.grid.zneg0._perm+
-                self.grid.zneg1._size/self.grid.zneg1._perm)
-            self._perm[:,5] = (2*self._delta[:,5])/(self.grid.zpos0._size/self.grid.zpos0._perm+
-                self.grid.zpos1._size/self.grid.zpos1._perm)
-
-    def set_static(self):
-        """static part of the transmissibility values,
-        has the shape of (number of grids, flow dimension x 2)."""
-        self._static = (self._perm*self.grid._area.repeat(2,axis=1))/(self._delta)
-
-    def array(self,fluid):
-        """transmissibility arrays of the size (number of grids, flow dimension x 2)"""
-        return self._static/fluid._viscosity
-
-    def Tmatrix(self,array):
-
-        tmatrix = csr(self.shape)
-
-        tmatrix = self.Tcharge(tmatrix,0,array)
-        tmatrix = self.Tcharge(tmatrix,1,array)
-
-        if self.grid.flodim>1:
-            tmatrix = self.Tcharge(tmatrix,2,array)
-            tmatrix = self.Tcharge(tmatrix,3,array)
-
-        if self.grid.flodim>2:
-            tmatrix = self.Tcharge(tmatrix,4,array)
-            tmatrix = self.Tcharge(tmatrix,5,array)
+            tmatrix = self.tcharge('z',fluid,tmatrix)
 
         return tmatrix
 
-    def Tcharge(self,tmatrix:csr,column:int,array:numpy.ndarray):
+    def Jmatrix(self,fluid,*pconst):
         """
-        Returns updated transmissibility matrix:
-
-        tmatrix : csr_matrix object defined for transmissibility matrix
- 
-        column  : integer indicating the direction:
-            0   : xmin direction
-            1   : xmax direction
-            2   : ymin direction
-            3   : ymax direction
-            4   : zmin direction
-            5   : zmax direction
-
-        array   : transmissibility array with the size of
-                  (number of grids, 2*dimension) and float type
-
-        The transmissibility matrix is updated for:
-
-        1. transmissibility matrix diagonal entries 
-        2. transmissibility matrix offset entries
-
-        """
+        pconst   : constant pressure boundary condition tuple (face,pressure)
         
-        notOnBorder = ~(self.grid.index[:,0]==self.grid.index[:,column+1])
+        face     : string indicating the direction where the constant pressure boundary
+                   condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
 
-        # indices of grids not located at the border for the given direction
-        diag_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,0])
-
-        # indices of neighbor grids in that direction
-        offs_indices = (self.grid.index[notOnBorder,0],self.grid.index[notOnBorder,column+1])
-
-        tmatrix += csr((array[notOnBorder,column],diag_indices),shape=tmatrix.shape)
-        tmatrix -= csr((array[notOnBorder,column],offs_indices),shape=tmatrix.shape)
-
-        return tmatrix
-
-    def Jmatrix(self,array,*pconst):
-        """
-        array   : transmissibility array of size (number of grids, flow dimension x 2)
-        columns : integer indicating the direction where the
-            constant pressure boundary condition is implemented:
-
-            0   : xmin direction
-            1   : xmax direction
-            2   : ymin direction
-            3   : ymax direction
-            4   : zmin direction
-            5   : zmax direction
-
-        Return J matrix filled with 2 x transmissibility values.
+        Return J matrix filled with constant pressure boundary indices.
 
         """
 
-        jmatrix = csr(self.shape)
+        jmatrix = csr(self.matrix)
 
-        for column, _ in pconst:
+        for index,(face, _) in enumerate(pconst):
 
-            fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
+            diag = getattr(self.grid,face)
 
-            indices = (self.grid.index[fringes,0],self.grid.index[fringes,0])
+            vals = 2*self._staticb[index]/fluid._viscosity
 
-            jmatrix += csr((2*array[fringes,column],indices),shape=self.shape)
+            jmatrix += csr((vals,(diag,diag)),shape=self.matrix)
 
         return jmatrix
 
@@ -162,52 +89,50 @@ class Tclass():
 
         return diags(pore_volume.flatten()/tstep)
 
-    def Qvector(self,array,*pconst):
+    def Qvector(self,fluid,*pconst):
         """
-        array    : transmissibility array of size (number of grids, flow dimension x 2)
-        pconst   : constant pressure boundary condition tuple (column,pressure)
-        columns  : integer indicating the direction where the
-            constant pressure boundary condition is implemented:
+        pconst   : constant pressure boundary condition tuple (face,pressure)
 
-            0    : xmin direction
-            1    : xmax direction
-            2    : ymin direction
-            3    : ymax direction
-            4    : zmin direction
-            5    : zmax direction
+        face     : string indicating the direction where the constant pressure boundary
+                   condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
 
         pressure : the value of the constant pressure in psi.
 
-        Return Q vector filled with 2 x transmissibility x pressure values.
+        Return Q vector filled with constant pressure values.
 
         """
 
-        shape = (self.grid.numtot,1)
+        qvector = csr(self.vector)
 
-        qvector = csr(shape)
+        for index,(face,pressure) in enumerate(pconst):
 
-        for column,pressure in pconst:
+            diag = getattr(self.grid,face)
 
-            fringes = (self.grid.index[:,0]==self.grid.index[:,column+1])
+            vals = 2*self._staticb[index]/fluid._viscosity*pressure*6894.76
 
-            indices = (self.grid.index[fringes,0],numpy.zeros(fringes.sum()))
-
-            qvector += csr((2*array[fringes,column]*pressure*6894.76,indices),shape=shape)
+            qvector += csr((vals,(diag,numpy.zeros(diag.sum()))),shape=self.vector)
 
         return qvector
 
-    def Gvector(self,array,fluid):
+    def Gvector(self,fluid,Tmatrix):
 
-        return fluid._density*self._gravity*self.Tmatrix(array).dot(self.grid._depth)
+        return fluid._density*self._gravity*Tmatrix.dot(self.grid._depth)
 
     @property
     def _gravity(self):
+        """Gravitational acceleration in SI units"""
         return 9.807
 
     @property
-    def shape(self):
-        return (self.grid.numtot,self.grid.numtot)
+    def vector(self):
+        """Shape of the vectors of transmissibility calculations"""
+        return (self.grid.numtot,1)
 
+    @property
+    def matrix(self):
+        """Shape of the matrices of transmissibility calculations"""
+        return (self.grid.numtot,self.grid.numtot)
+    
     @property
     def field2si(self):
         """Conversion factor for transmissibility value,
@@ -219,6 +144,77 @@ class Tclass():
         """Conversion factor for transmissibility value,
         from SI Units to Oil Field Units."""
         return (3.28084**3*(24*60*60)*6894.76)
+
+    def tcharge(self,axis:str,fluid,tmatrix:csr):
+        """
+        Returns updated transmissibility matrix:
+
+        axis    : x, y, or z
+
+        tmatrix : csr_matrix object defined for transmissibility matrix
+
+        The transmissibility matrix is updated for diagonal and offset entries.
+        """
+
+        stat = getattr(self,f"_static{axis}")
+
+        vals = stat/fluid._viscosity
+
+        dneg = getattr(self.grid,f"{axis}neg")
+        dpos = getattr(self.grid,f"{axis}pos")
+
+        tmatrix += csr((vals,(dneg,dneg)),shape=tmatrix.shape)
+        tmatrix -= csr((vals,(dneg,dpos)),shape=tmatrix.shape)
+
+        tmatrix += csr((vals,(dpos,dpos)),shape=tmatrix.shape)
+        tmatrix -= csr((vals,(dpos,dneg)),shape=tmatrix.shape)
+
+        return tmatrix
+
+    def set_stat_innface(self,axis):
+        """Returns static transmissibility values for the given
+        direction and inner faces (interfaces)."""
+        dims = self.stat_diff(
+            getattr(self.grid,f"{axis}neg")._dims,
+            getattr(self.grid,f"{axis}pos")._dims)
+
+        area = self.stat_area(
+            getattr(self.grid,f"{axis}neg")._area,
+            getattr(self.grid,f"{axis}pos")._area)
+        
+        perm = self.stat_perm(
+            getattr(self.grid,f"{axis}neg")._dims,
+            getattr(self.grid,f"{axis}pos")._dims,
+            getattr(self.grid,f"{axis}neg")._perm,
+            getattr(self.grid,f"{axis}pos")._perm)
+
+        return self.stat_stat(dims,area,perm)
+
+    def set_stat_surface(self,face):
+        """Returns static transmissibility values for the given
+        surface on the exterior boundary."""
+        
+        dims = getattr(self.grid,face)._dims
+        area = getattr(self.grid,face)._area
+        perm = getattr(self.grid,face)._perm
+
+        return self.stat_stat(dims,area,perm)
+
+    @staticmethod
+    def stat_diff(dims_neg,dims_pos):
+        return (dims_neg+dims_pos)/2
+
+    @staticmethod
+    def stat_area(area_neg,area_pos):
+        return (area_neg+area_pos)/2
+
+    @staticmethod
+    def stat_perm(dims_neg,dims_pos,perm_neg,perm_pos):
+        return (dims_neg+dims_pos)/(dims_neg/perm_neg+dims_pos/perm_pos)
+
+    @staticmethod
+    def stat_stat(dims,area,perm):
+        return (perm*area)/dims
 
 @dataclass(frozen=True)
 class WellCondition:        # bottom hole conditions
@@ -252,7 +248,7 @@ class MixedSolver(Tclass):
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
 
-    def __init__(self,grid,fluid,well=None,theta=0):
+    def __init__(self,grid,fluid,*pconst,well=None,theta=0):
         """
         grid  : It is a RecCuboid (rectangular cuboid) object.
 
@@ -269,9 +265,12 @@ class MixedSolver(Tclass):
 
         """
 
-        super().__init__(grid)
+        super().__init__(grid,*pconst)
 
         self.fluid = fluid
+
+        self.pconst = pconst
+
         self.well  = well
 
         self.theta = theta
@@ -316,17 +315,15 @@ class MixedSolver(Tclass):
 
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
 
-    def solve(self,pconsts):
-
-        array = self.array(self.fluid)
+    def solve(self):
 
         P = self._pinit
 
-        T = self.Tmatrix(array)
-        J = self.Jmatrix(array,*pconsts)
+        T = self.Tmatrix(self.fluid)
+        J = self.Jmatrix(self.fluid,*self.pconst)
         A = self.Amatrix(self._tstep)
-        Q = self.Qvector(array,*pconsts)
-        G = self.Gvector(array,self.fluid)
+        Q = self.Qvector(self.fluid,*self.pconst)
+        G = self.Gvector(self.fluid,T)
         
         for k in range(self.nstep):
 
