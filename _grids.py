@@ -623,72 +623,72 @@ class RecCuboid():
 	@property
 	def xmin(self):
 		"""Properties of grids on x-minimum boundary"""
-		return RecCuboidDir(self,1,edge=True)
+		return RecCuboidGrid(self,1,edge=True)
 
 	@property
 	def xpos(self):
 		"""Properties of grids that has x-positive neighbors"""
-		return RecCuboidDir(self,2)
+		return RecCuboidGrid(self,2)
 
 	@property
 	def xneg(self):
 		"""Properties of grids that has x-negative neighbors"""
-		return RecCuboidDir(self,1)
+		return RecCuboidGrid(self,1)
 
 	@property
 	def xmax(self):
 		"""Properties of grids on x-maximum boundary"""
-		return RecCuboidDir(self,2,edge=True)
+		return RecCuboidGrid(self,2,edge=True)
 
 	@property
 	def ymin(self):
 		"""Properties of grids on y-minimum boundary"""
 		if self.flodim>1:
-			return RecCuboidDir(self,3,edge=True)
+			return RecCuboidGrid(self,3,edge=True)
 
 	@property
 	def ypos(self):
 		"""Properties of grids that has y-positive neighbors"""
 		if self.flodim>1:
-			return RecCuboidDir(self,4)
+			return RecCuboidGrid(self,4)
 
 	@property
 	def yneg(self):
 		"""Properties of grids that has y-negative neighbors"""
 		if self.flodim>1:
-			return RecCuboidDir(self,3)
+			return RecCuboidGrid(self,3)
 
 	@property
 	def ymax(self):
 		"""Properties of grids on y-maximum boundary"""
 		if self.flodim>1:
-			return RecCuboidDir(self,4,edge=True)
+			return RecCuboidGrid(self,4,edge=True)
 
 	@property
 	def zmin(self):
 		"""Properties of grids on z-minimum boundary"""
 		if self.flodim>2:
-			return RecCuboidDir(self,5,edge=True)
+			return RecCuboidGrid(self,5,edge=True)
 
 	@property
 	def zpos(self):
 		"""Properties of grids that has z-positive neighbors"""
 		if self.flodim>2:
-			return RecCuboidDir(self,6)
+			return RecCuboidGrid(self,6)
 
 	@property
 	def zneg(self):
 		"""Properties of grids that has z-negative neighbors"""
 		if self.flodim>2:
-			return RecCuboidDir(self,5)
+			return RecCuboidGrid(self,5)
 
 	@property
 	def zmax(self):
 		"""Properties of grids on z-maximum boundary"""
 		if self.flodim>2:
-			return RecCuboidDir(self,6,edge=True)
+			return RecCuboidGrid(self,6,edge=True)
 
-class RecCuboidDir(numpy.ndarray):
+class RecCuboidGrid(numpy.ndarray):
 
 	def __new__(cls,grid,path,edge=False):
 		"""

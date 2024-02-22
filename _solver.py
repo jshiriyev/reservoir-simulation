@@ -17,21 +17,62 @@ from scipy.sparse import csr_matrix as csr
 
 # It should include Slightly Compressible and Compressible Flows
 
+class BoundCond():
+
+    def __init__(self,face,**kwargs):
+        """
+        face    : boundary, xmin, xmax, ymin, ymax, zmin, or zmax
+
+        Assign only one of the following conditions:
+
+        press   : constant pressure values
+        orate   : constant flow boundary condition, 0 = no flow
+        wrate   : constant flow boundary condition, 0 = no flow
+        grate   : constant flow boundary condition, 0 = no flow
+        """
+        self._face = face
+
+        for key,value in kwargs.items():
+            if value is not None:
+                if key == "press":
+                    setattr(self,f"_{key}",value*6894.76)
+                elif key in ("orate","wrate","grate"):
+                    setattr(self,f"_{key}",value*1.84013e-6)
+                break
+
+    def face(self):
+        return self._face
+
+    def press(self):
+        return self._press/6894.76
+
+    def orate(self):
+        return self._orate/1.84013e-6
+
+    def wrate(self):
+        return self._wrate/1.84013e-6
+
+    def grate(self):
+        return self._grate/1.84013e-6
+
 class Tclass():
 
-    def __init__(self,grid,*pconst):
+    def __init__(self,grid,fluid,wcond=None,bcond=None):
         """
         grid    : RecCuboid instance, rectangular cuboid grids
 
-        pconst  : constant pressure boundary condition tuple (face,pressure)
+        fluid   : fluid item defining properties and methods for calculations
         
-        face    : string indicating the direction where the constant pressure boundary
-                  condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
+        wcond   : well condition, tuple of WellCond instance
+        bcond   : boundary condition, tuple of BoundCond instance
         """
 
         self.grid = grid
 
-        self.pconst = pconst
+        self.fluid = fluid
+
+        self.wcond = () if wcond is None else wcond
+        self.bcond = () if bcond is None else bcond
 
         self.set_static()
 
@@ -46,9 +87,14 @@ class Tclass():
         if self.grid.flodim>2:
             self._staticz = self.set_stat_innface('z')
 
+        self._staticw = []
+
+        for well in self.wcond:
+            self._staticw.append(well.block)
+
         self._staticb = []
 
-        for face, _ in self.pconst:
+        for face, _ in self.bcond:
 
             statics = self.set_stat_surface(face)
 
@@ -69,14 +115,14 @@ class Tclass():
 
         return tmatrix
 
-    def Jmatrix(self,fluid):
+    def Jmatrix(self,fluid,wcond=None):
         """
         Returns J matrix filled with constant pressure boundary indices.
         """
 
         jmatrix = csr(self.matrix)
 
-        for index,(face, _) in enumerate(self.pconst):
+        for index,(face,_) in enumerate(self.bcond):
 
             diag = getattr(self.grid,face)
 
@@ -92,14 +138,14 @@ class Tclass():
 
         return diags(pore_volume.flatten()/tstep)
 
-    def Qvector(self,fluid):
+    def Qvector(self,fluid,wcond=None):
         """
         Returns Q vector filled with constant pressure values.
         """
 
         qvector = csr(self.vector)
 
-        for index,(face,pressure) in enumerate(self.pconst):
+        for index,(face,pressure) in enumerate(self.bcond):
 
             diag = getattr(self.grid,face)
 
@@ -217,7 +263,7 @@ class MixedSolver(Tclass):
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
 
-    def __init__(self,grid,fluid,well=None,pcons=None,theta=0):
+    def __init__(self,grid,fluid,wcond=None,bcond=None,theta=0):
         """
         grid  : It is a RecCuboid (rectangular cuboid) object.
 
@@ -225,12 +271,9 @@ class MixedSolver(Tclass):
             two slightly compressible fluids where the second one is at irreducible
             saturation, not mobile.
 
-        pcons : constant pressure boundary condition tuple (face,pressure)
-        
-        face  : string indicating the direction where the constant pressure boundary
-                condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
-        
-        well  : WellStock item.
+        wcond : tuple of WellCond item.
+
+        bcond : tuple of BoundCond item.
 
         theta : solution type determined in the mixed solver
             when theta = 0, it reduces to Implicit method
@@ -239,11 +282,7 @@ class MixedSolver(Tclass):
 
         """
 
-        super().__init__(grid,pcons)
-
-        self.fluid = fluid
-
-        self.well  = well
+        super().__init__(grid,fluid,wcond,bcond)
 
         self.theta = theta
 
