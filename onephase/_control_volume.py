@@ -25,9 +25,11 @@ class Tclass():
 
         self.grid = grid
 
-        self.set_static(*pconst)
+        self.pconst = pconst
 
-    def set_static(self,*pconst):
+        self.set_static()
+
+    def set_static(self):
         """Self assigns static transmissibility values."""
 
         self._staticx = self.set_stat_innface('x')
@@ -36,7 +38,7 @@ class Tclass():
 
         self._staticb = []
 
-        for face, _ in pconst:
+        for face, _ in self.pconst:
 
             statics = self.set_stat_surface(
                 getattr(self.grid,face)._dims,
@@ -60,20 +62,14 @@ class Tclass():
 
         return tmatrix
 
-    def Jmatrix(self,fluid,*pconst):
+    def Jmatrix(self,fluid):
         """
-        pconst   : constant pressure boundary condition tuple (face,pressure)
-        
-        face     : string indicating the direction where the constant pressure boundary
-                   condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
-
-        Return J matrix filled with constant pressure boundary indices.
-
+        Returns J matrix filled with constant pressure boundary indices.
         """
 
         jmatrix = csr(self.matrix)
 
-        for index,(face, _) in enumerate(pconst):
+        for index,(face, _) in enumerate(self.pconst):
 
             diag = getattr(self.grid,face)
 
@@ -89,22 +85,14 @@ class Tclass():
 
         return diags(pore_volume.flatten()/tstep)
 
-    def Qvector(self,fluid,*pconst):
+    def Qvector(self,fluid):
         """
-        pconst   : constant pressure boundary condition tuple (face,pressure)
-
-        face     : string indicating the direction where the constant pressure boundary
-                   condition is implemented: (xmin,xmax,ymin,ymax,zmin,zmax)
-
-        pressure : the value of the constant pressure in psi.
-
-        Return Q vector filled with constant pressure values.
-
+        Returns Q vector filled with constant pressure values.
         """
 
         qvector = csr(self.vector)
 
-        for index,(face,pressure) in enumerate(pconst):
+        for index,(face,pressure) in enumerate(self.pconst):
 
             diag = getattr(self.grid,face)
 
@@ -216,33 +204,6 @@ class Tclass():
     def stat_stat(dims,area,perm):
         return (perm*area)/dims
 
-@dataclass(frozen=True)
-class WellCondition:        # bottom hole conditions
-    time    : float         # the time for implementing the condition, days
-    status  : str           # status of the well, open or shut
-    bhp     : float = None  # constant bottom hole pressure if that is the control
-    orate   : float = None  # constant oil rate if that is the control
-    wrate   : float = None  # constant water rate if that is the control
-    grate   : float = None  # constant gas rate if that is the control
-
-@dataclass(frozen=True)
-class Well:                 # It is a well dictionary used in the simulator
-    name    : str           # name of the well
-    block   : tuple         # block indices containing the well 
-    sort    : str           # vertical or horizontal
-
-    radius  : float         # well radius, ft
-    skin    : float = 0     # skin factor of the well, dimensionless
-
-    conds   : list  = field(default_factory=list)
-
-    def __post_init__(self):
-        object.__setattr__(self,'_radius',self.radius*0.3048)
-
-    def add(self,*args,**kwargs):
-        """Adds a bottom hole condition to the conds property"""
-        self.conds.append(WellCondition(*args,**kwargs)) 
-
 class MixedSolver(Tclass):
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
@@ -268,8 +229,6 @@ class MixedSolver(Tclass):
         super().__init__(grid,*pconst)
 
         self.fluid = fluid
-
-        self.pconst = pconst
 
         self.well  = well
 
@@ -320,9 +279,9 @@ class MixedSolver(Tclass):
         P = self._pinit
 
         T = self.Tmatrix(self.fluid)
-        J = self.Jmatrix(self.fluid,*self.pconst)
+        J = self.Jmatrix(self.fluid)
         A = self.Amatrix(self._tstep)
-        Q = self.Qvector(self.fluid,*self.pconst)
+        Q = self.Qvector(self.fluid)
         G = self.Gvector(self.fluid,T)
         
         for k in range(self.nstep):

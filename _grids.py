@@ -346,17 +346,13 @@ class HexaHedron():
 
 		return area
 
+"""VERY IMPORTANT NOTE:
+IT IS ESSENTIAL TO IDENTIFY DIRECTIONAL PROPERTIES AND SCALAR PROPERTIES
+AND TREAT THE DIFFERENTLY IN RecCuboidDir"""
+
 class RecCuboid():
 
-	def __init__(self,
-		xdelta:tuple=None,
-		ydelta:tuple=None,
-		zdelta:tuple=None,
-		length:float=None,
-		width:float=None,
-		height:float=None,
-		num:tuple=None,
-		flodim:int=None):
+	def __init__(self,xdelta:tuple=None,ydelta:tuple=None,zdelta:tuple=None,length:float=None,width:float=None,height:float=None,num:tuple=None,flodim:int=None):
 		"""Three-dimensional reservoir model can be initialized in two different ways:
 		
 		Method 1:

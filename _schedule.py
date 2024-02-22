@@ -4,7 +4,37 @@ from .directory._browser import Browser
 
 from borepy.gmodel._stock import Stock
 
-class Wells():
+@dataclass(frozen=True)
+class Well:                 # It is a well dictionary used in the simulator
+    name    : str           # name of the well
+    block   : tuple         # block indices containing the well 
+    sort    : str           # vertical or horizontal
+
+    radius  : float         # well radius, ft
+    skin    : float = 0     # skin factor of the well, dimensionless
+
+    conds   : list  = field(default_factory=list)
+
+    def __post_init__(self):
+        object.__setattr__(self,'_radius',self.radius*0.3048)
+
+    def set_survey(self,survey):
+        self.survey = survey
+
+    def add_conds(self,*args,**kwargs):
+        """Adds a bottom hole condition to the conds property"""
+        self.conds.append(WellConds(*args,**kwargs))
+
+@dataclass(frozen=True)
+class WellConds:            # bottom hole conditions
+    time    : float         # the time for implementing the condition, days
+    status  : str           # status of the well, open or shut
+    bhp     : float = None  # constant bottom hole pressure if that is the control
+    orate   : float = None  # constant oil rate if that is the control
+    wrate   : float = None  # constant water rate if that is the control
+    grate   : float = None  # constant gas rate if that is the control
+
+class WellStock():
 
     def __init__(self):
 
