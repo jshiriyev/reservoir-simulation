@@ -1,8 +1,6 @@
 import numpy
 
-from .directory._browser import Browser
-
-from borepy.gmodel._stock import Stock
+# from .directory._browser import Browser
 
 @dataclass(frozen=True)
 class Well:                 # It is a well dictionary used in the simulator
@@ -96,7 +94,7 @@ class WellStock():
 
         self.JR = (2*np.pi*dz*np.sqrt(kx*ky))/(np.log(req/rw)+skin)
 
-class Schedule(Browser):
+class Schedule(Browser): # previously it was inheritting from Browser
 
     def __init__(self,*args,**kwargs):
 

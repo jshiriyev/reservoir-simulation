@@ -346,10 +346,6 @@ class HexaHedron():
 
 		return area
 
-"""VERY IMPORTANT NOTE:
-IT IS ESSENTIAL TO IDENTIFY DIRECTIONAL PROPERTIES AND SCALAR PROPERTIES
-AND TREAT THE DIFFERENTLY IN RecCuboidDir"""
-
 class RecCuboid():
 
 	def __init__(self,xdelta:tuple=None,ydelta:tuple=None,zdelta:tuple=None,length:float=None,width:float=None,height:float=None,num:tuple=None,flodim:int=None):
@@ -445,60 +441,27 @@ class RecCuboid():
 			self.gplat[idx.reshape(num[2],-1)[1:,:],5] -= num[0]*num[1]
 			self.gplat[idx.reshape(num[2],-1)[:-1,:],6] += num[0]*num[1]
 
-	def set_xaxis(self):
-
-		side2 = numpy.cumsum(self._xdelta)
-		side1 = numpy.roll(side2,1)
-
-		side1[0] = 0
-
-		self._xaxis = (side1+side2)/2
-
-	def set_yaxis(self):
-
-		side2 = numpy.cumsum(self._ydelta)
-		side1 = numpy.roll(side2,1)
-
-		side1[0] = 0
-
-		self._yaxis = (side1+side2)/2
-
-	def set_zaxis(self):
-
-		side2 = numpy.cumsum(self._zdelta)
-		side1 = numpy.roll(side2,1)
-
-		side1[0] = 0
-
-		self._zaxis = (side1+side2)/2
-
 	def set_dims(self):
 		"""should be depreciated later"""
 
-		self._dims = numpy.zeros((self.numtot,3))
+		self._xdims = numpy.tile(
+			self._xdelta,self._num[1]*self._num[2]).reshape((-1,1))
 
-		self._dims[:,0] = numpy.tile(self._xdelta,self._num[1]*self._num[2])
+		self._ydims = numpy.tile(
+			numpy.repeat(self._ydelta,self._num[0]),self._num[2]).reshape((-1,1))
 
-		self._dims[:,1] = numpy.tile(
-			numpy.repeat(self._ydelta,self._num[0]),self._num[2])
-
-		self._dims[:,2] = numpy.repeat(self._zdelta,self._num[0]*self._num[1])
+		self._zdims = numpy.repeat(
+			self._zdelta,self._num[0]*self._num[1]).reshape((-1,1))
 
 	def set_area(self):
 
-		self._area = numpy.zeros((self.numtot,self.flodim))
-
-		self._area[:,0] = self._dims[:,1]*self._dims[:,2]
-
-		if self.flodim>1:
-			self._area[:,1] = self._dims[:,2]*self._dims[:,0]
-
-		if self.flodim>2:
-			self._area[:,2] = self._dims[:,0]*self._dims[:,1]
+		self._xarea = self._ydims*self._zdims
+		self._yarea = self._zdims*self._xdims
+		self._zarea = self._xdims*self._ydims
 
 	def set_volume(self):
 
-		self._volume = numpy.prod(self._dims,axis=1).reshape((-1,1))
+		self._volume = self._xdims*self._ydims*self._zdims
 
 	def get_property(self,quality,conversion_factor=1.,dtype=None):
 
@@ -515,33 +478,25 @@ class RecCuboid():
 		return quality.reshape((-1,1))
 
 	def set_depth(self,depth):
-
+		"""Assigns the depth values in ft to the grids."""
 		self._depth = self.get_property(depth,conversion_factor=0.3048,dtype=numpy.float_)
 
-	def set_porosity(self,porosity):
-		"""porosity in fractions"""
+	def set_poro(self,poro):
+		"""Assigns the porosity values in fractions to the grids."""
 
-		self._poro = self.get_property(porosity,dtype=numpy.float_)
+		self._poro = self.get_property(poro,dtype=numpy.float_)
 
-	def set_permeability(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
-		"""xperm in mD"""
+	def set_perm(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
+		"""Assigns the permeability values in mD to the grids."""
 
-		_xperm = self.get_property(
+		self._xperm = self.get_property(
 			xperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
 
-		if yperm is not None:
-			_yperm = self.get_property(
-				yperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
-		else:
-			_yperm = _xperm*yreduce
+		self._yperm = self._xperm*yreduce if yperm is None else self.get_property(
+			yperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
 
-		if zperm is not None:
-			_zperm = self.get_property(
+		self._zperm = self._xperm*zreduce if zperm is None else self.get_property(
 				zperm,conversion_factor=9.869233e-16,dtype=numpy.float_)
-		else:
-			_zperm = _xperm*zreduce
-
-		self._perm = numpy.concatenate((_xperm,_yperm,_zperm),axis=1)
 
 	@property
 	def num(self):
@@ -576,30 +531,70 @@ class RecCuboid():
 		return self._height/0.3048
 
 	@property
+	def _xaxis(self):
+
+		side2 = numpy.cumsum(self._xdelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		return (side1+side2)/2
+
+	@property
+	def _yaxis(self):
+
+		side2 = numpy.cumsum(self._ydelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		return (side1+side2)/2
+
+	@property
+	def _zaxis(self):
+
+		side2 = numpy.cumsum(self._zdelta)
+		side1 = numpy.roll(side2,1)
+
+		side1[0] = 0
+
+		return (side1+side2)/2
+
+	@property
 	def xaxis(self):
-		if not hasattr(self,"_xaxis"):
-			self.set_xaxis()
 		return self._xaxis/0.3048
 
 	@property
 	def yaxis(self):
-		if not hasattr(self,"_yaxis"):
-			self.set_yaxis()
 		return self._yaxis/0.3048
 
 	@property
 	def zaxis(self):
-		if not hasattr(self,"_zaxis"):
-			self.set_zaxis()
 		return self._zaxis/0.3048
 
 	@property
-	def dims(self):
-		return self._dims/0.3048
+	def xdims(self):
+		return self._xdims/0.3048
 
 	@property
-	def area(self):
-		return self._area/0.3048**2
+	def ydims(self):
+		return self._ydims/0.3048
+
+	@property
+	def zdims(self):
+		return self._zdims/0.3048
+
+	@property
+	def xarea(self):
+		return self._xarea/0.3048**2
+
+	@property
+	def yarea(self):
+		return self._yarea/0.3048**2
+
+	@property
+	def zarea(self):
+		return self._zarea/0.3048**2
 
 	@property
 	def volume(self):
@@ -610,12 +605,20 @@ class RecCuboid():
 		return self._depth/0.3048
 	
 	@property
-	def perm(self):
-		return self._perm/9.869233e-16
-
-	@property
 	def poro(self):
 		return self._poro
+
+	@property
+	def xperm(self):
+		return self._xperm/9.869233e-16
+
+	@property
+	def yperm(self):
+		return self._yperm/9.869233e-16
+
+	@property
+	def zperm(self):
+		return self._zperm/9.869233e-16
 
 	@property
 	def xmin(self):
@@ -703,8 +706,6 @@ class RecCuboidDir(numpy.ndarray):
 
 		obj.grid = grid
 
-		obj.path = path
-
 		obj.axis = int((path-1)/2)
 
 		return obj
@@ -714,12 +715,22 @@ class RecCuboidDir(numpy.ndarray):
 		if obj is None: return
 
 		self.grid = getattr(obj,'grid',None)
-		self.path = getattr(obj,'path',None)
 		self.axis = getattr(obj,'axis',None)
 
 	def __getattr__(self,key):
 
-		return getattr(self.grid,key)[self,self.axis]
+		("dims","area","volume","depth","poro","perm")
+
+		unit = key[1:] if key.startswith('_') else key	
+
+		if unit in ("volume","depth","poro"):
+			return getattr(self.grid,key)[self,0]
+
+		if unit[0] not in ("x","y","z"):
+			return
+
+		if unit[1:] in ("dims","area","perm"):
+			return getattr(self.grid,key)[self,0]		
 
 if __name__ == "__main__":
 

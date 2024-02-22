@@ -33,17 +33,18 @@ class Tclass():
         """Self assigns static transmissibility values."""
 
         self._staticx = self.set_stat_innface('x')
-        self._staticy = self.set_stat_innface('y')
-        self._staticz = self.set_stat_innface('z')
+
+        if self.grid.flodim>1:
+            self._staticy = self.set_stat_innface('y')
+
+        if self.grid.flodim>2:
+            self._staticz = self.set_stat_innface('z')
 
         self._staticb = []
 
         for face, _ in self.pconst:
 
-            statics = self.set_stat_surface(
-                getattr(self.grid,face)._dims,
-                getattr(self.grid,face)._area,
-                getattr(self.grid,face)._perm)
+            statics = self.set_stat_surface(face)
 
             self._staticb.append(statics)
 
@@ -98,7 +99,7 @@ class Tclass():
 
             vals = 2*self._staticb[index]/fluid._viscosity*pressure*6894.76
 
-            qvector += csr((vals,(diag,numpy.zeros(diag.sum()))),shape=self.vector)
+            qvector += csr((vals,(diag,numpy.zeros(diag.size))),shape=self.vector)
 
         return qvector
 
@@ -162,19 +163,20 @@ class Tclass():
     def set_stat_innface(self,axis):
         """Returns static transmissibility values for the given
         direction and inner faces (interfaces)."""
-        dims = self.stat_diff(
-            getattr(self.grid,f"{axis}neg")._dims,
-            getattr(self.grid,f"{axis}pos")._dims)
+        
+        dims = self.stat_dims(
+            getattr(getattr(self.grid,f"{axis}neg"),f"_{axis}dims"),
+            getattr(getattr(self.grid,f"{axis}pos"),f"_{axis}dims"))
 
         area = self.stat_area(
-            getattr(self.grid,f"{axis}neg")._area,
-            getattr(self.grid,f"{axis}pos")._area)
+            getattr(getattr(self.grid,f"{axis}neg"),f"_{axis}area"),
+            getattr(getattr(self.grid,f"{axis}pos"),f"_{axis}area"))
         
         perm = self.stat_perm(
-            getattr(self.grid,f"{axis}neg")._dims,
-            getattr(self.grid,f"{axis}pos")._dims,
-            getattr(self.grid,f"{axis}neg")._perm,
-            getattr(self.grid,f"{axis}pos")._perm)
+            getattr(getattr(self.grid,f"{axis}neg"),f"_{axis}dims"),
+            getattr(getattr(self.grid,f"{axis}pos"),f"_{axis}dims"),
+            getattr(getattr(self.grid,f"{axis}neg"),f"_{axis}perm"),
+            getattr(getattr(self.grid,f"{axis}pos"),f"_{axis}perm"))
 
         return self.stat_stat(dims,area,perm)
 
@@ -182,14 +184,14 @@ class Tclass():
         """Returns static transmissibility values for the given
         surface on the exterior boundary."""
         
-        dims = getattr(self.grid,face)._dims
-        area = getattr(self.grid,face)._area
-        perm = getattr(self.grid,face)._perm
+        dims = getattr(getattr(self.grid,face),f"_{face[0]}dims")
+        area = getattr(getattr(self.grid,face),f"_{face[0]}area")
+        perm = getattr(getattr(self.grid,face),f"_{face[0]}perm")
 
         return self.stat_stat(dims,area,perm)
 
     @staticmethod
-    def stat_diff(dims_neg,dims_pos):
+    def stat_dims(dims_neg,dims_pos):
         return (dims_neg+dims_pos)/2
 
     @staticmethod
