@@ -1,3 +1,5 @@
+from dataclasses import dataclass,field
+
 import numpy
 
 # from .directory._browser import Browser
