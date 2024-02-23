@@ -2,6 +2,7 @@ import numpy
 
 @dataclass(frozen=True)
 class Fluid:
+    
     density		: float
     viscosity   : float
 

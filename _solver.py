@@ -305,10 +305,12 @@ class Matrix():
 
     def qcharge(self,cond,static,qvector:csr):
 
+        tvalues = static/self.fluid._viscosity
+
         if cond.sort=="press":
-            qvalues = 2*static/self.fluid._viscosity*cond._cond
+            qvalues = 2*tvalues*cond._cond
         else:
-            qvalues = cond._cond
+            qvalues = tvalues/tvalues.sum()*cond._cond
 
         indices = numpy.zeros(cond.block.size)
 
@@ -444,26 +446,21 @@ class OnePhase(Matrix):
         self._time = numpy.arange(
             self._tstep,self._ttime+self._tstep/2,self._tstep)
 
-    def initialize(self,pref,ctotal):
+    def initialize(self,dref,pref,ctotal):
         """Initializing the reservoir pressure
         
-        pref    : reference depth and pressure,
-                  tuple of (depth in ft, pressure in psi)
+        dref    : reference depth in feet
+        pref    : reference pressure in psi
 
         ctotal  : total compressibility 1/psi
         """
 
-        depth,pressure = pref
-
-        depth_diff = (self.grid._depth-depth*0.3048)
-
-        hydro_diff = self.fluid._density*self._gravity*depth_diff
-
-        self._pinit = pressure*6894.76+hydro_diff
-
-        self._ctotal = ctotal/6894.76
+        self._pinit = self.pzero(
+            dref*0.3048,pref*6894.76,self.grid._depth,self.fluid._density)
 
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
+
+        self._ctotal = ctotal/6894.76
 
     def solve(self):
 
@@ -519,6 +516,18 @@ class OnePhase(Matrix):
 
         return Pwf
 
+    @staticmethod
+    def pzero(dref,pref,depths,density):
+        """Calculates the initial pressure
+        
+        dref    : reference depth in m
+        pref    : reference pressure in Pa
+
+        depths  : depths where to calculate the pressure in m
+        density : fluid density in kg/m3
+        """
+        return pref+density*OnePhase._gravity*(depths-dref)
+        
     @property
     def theta(self):
         return self._theta
