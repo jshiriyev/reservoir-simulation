@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import matplotlib.pyplot as plt
 
 import numpy
@@ -16,6 +18,24 @@ from scipy.sparse import csr_matrix as csr
 # from ._cappres import ScanCurves
 
 # It should include Slightly Compressible and Compressible Flows
+
+@dataclass(frozen=True)
+class WellCond:             # It is a well dictionary used in the simulator.
+    block   : tuple         # block indices containing the well 
+    sort    : str           # vertical or horizontal
+
+    radius  : float         # well radius, ft
+    skin    : float = 0     # skin factor of the well, dimensionless
+
+    bhp     : float = None  # constant bottom hole pressure if that is the control
+    orate   : float = None  # constant oil rate if that is the control
+    wrate   : float = None  # constant water rate if that is the control
+    grate   : float = None  # constant gas rate if that is the control
+    start   : float = 0     # start time for implementing the condition, days
+    end     : float = None  # end time for implementing the condition, days
+
+    def __post_init__(self):
+        object.__setattr__(self,'_radius',self.radius*0.3048)
 
 class BoundCond():
 
@@ -122,6 +142,14 @@ class Tclass():
 
         jmatrix = csr(self.matrix)
 
+        for index,(well,_) in enumerate(self.wcond):
+
+            diag = well.block
+
+            vals = 2*self._staticw[index]/fluid._viscosity
+
+            jmatrix += csr((vals,(diag,diag)),shape=self.matrix)
+
         for index,(face,_) in enumerate(self.bcond):
 
             diag = getattr(self.grid,face)
@@ -144,6 +172,14 @@ class Tclass():
         """
 
         qvector = csr(self.vector)
+
+        for index,(face,pressure) in enumerate(self.wcond):
+
+            diag = well.block
+
+            vals = 2*self._staticw[index]/fluid._viscosity*pressure*6894.76
+
+            qvector += csr((vals,(diag,numpy.zeros(diag.size))),shape=self.vector)
 
         for index,(face,pressure) in enumerate(self.bcond):
 
@@ -232,6 +268,28 @@ class Tclass():
 
         return self.stat_stat(dims,area,perm)
 
+    def set_stat_vwell(self,well):
+        """Returns static transmissibility values for the given
+        vertical well."""
+
+        dx = self.grid._xdims[well.block]
+        dy = self.grid._ydims[well.block]
+        dz = self.grid._zdims[well.block]
+
+        req = 0.14*numpy.sqrt(dx**2+dy**2)
+
+        kx = self.grid._xperm[well.block]
+        ky = self.grid._yperm[well.block]
+
+        upper = numpy.pi*dz*numpy.sqrt(kx*ky)
+        lower = numpy.log(req/well.radius)+well.skin
+
+        return 2*upper/lower
+
+    def set_stat_hwell(self,well):
+
+        return
+
     def set_stat_surface(self,face):
         """Returns static transmissibility values for the given
         surface on the exterior boundary."""
@@ -258,7 +316,7 @@ class Tclass():
     def stat_stat(dims,area,perm):
         return (perm*area)/dims
 
-class MixedSolver(Tclass):
+class OnePhase(Tclass):
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
@@ -416,7 +474,7 @@ class MixedSolver(Tclass):
     def psi2pa(self):
         return 6894.76
 
-class TwoPhase():
+class BlackOil():
     """IMPES Solution"""
     def __init__(self,res,fluids,relperm,wells):
 
