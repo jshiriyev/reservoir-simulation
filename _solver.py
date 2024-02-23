@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import matplotlib.pyplot as plt
 
 import numpy
@@ -17,25 +15,97 @@ from scipy.sparse import csr_matrix as csr
 # from ._cappres import JFunction
 # from ._cappres import ScanCurves
 
-# It should include Slightly Compressible and Compressible Flows
+"""
+The solver must include:
 
-@dataclass(frozen=True)
-class WellCond:             # It is a well dictionary used in the simulator.
-    block   : tuple         # block indices containing the well 
-    sort    : str           # vertical or horizontal
+- One-Phase Slightly Compressible Flow
+- One-Phase Compressible Flow
+- Multi-Phase Flow
 
-    radius  : float         # well radius, ft
-    skin    : float = 0     # skin factor of the well, dimensionless
+"""
 
-    bhp     : float = None  # constant bottom hole pressure if that is the control
-    orate   : float = None  # constant oil rate if that is the control
-    wrate   : float = None  # constant water rate if that is the control
-    grate   : float = None  # constant gas rate if that is the control
-    start   : float = 0     # start time for implementing the condition, days
-    end     : float = None  # end time for implementing the condition, days
+class WellCond:
+    """
+    It is a well condition object used in the simulator.
+    """
 
-    def __post_init__(self):
-        object.__setattr__(self,'_radius',self.radius*0.3048)
+    def __init__(self,block:tuple,axis:str,radius:float,skin:float,start:float,end:float,**kwargs):
+        """
+        block   : block indices containing the well
+        axis    : (z) vertical or (x,y) horizontal well
+
+        radius  : well radius, ft
+        skin    : skin factor of the well, dimensionless
+
+        start   : start time for implementing the condition, days
+        end     : end time for implementing the condition, days
+
+        Assign only one of the following conditions:
+
+        bhp     : constant bottom hole pressure
+        whp     : constant well head pressure
+
+        orate   : constant oil rate
+        wrate   : constant water rate
+        grate   : constant gas rate
+        """
+
+        self._block     = block
+        self._axis      = axis
+        self._radius    = radius*0.3048
+        self._skin      = skin
+        self._start     = start*(24*60*60)
+        self._end       = end*(24*60*60)
+
+        for key,value in kwargs.items():
+            if value is not None:
+                self._sort = key
+                if key == "bhp":
+                    self._cond = value*6894.76
+                elif key == "whp":
+                    self._cond = value*6894.76
+                elif key in ("orate","grate"):
+                    self._cond = value*1.84013e-6
+                elif key == "grate":
+                    self._cond = value*3.27741e-7
+                break
+
+    @property
+    def block(self):
+        return self._block
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def radius(self):
+        return self._radius/0.3048
+
+    @property
+    def skin(self):
+        return self._skin
+
+    @property
+    def start(self):
+        return self._start/(24*60*60)
+
+    @property
+    def end(self):
+        return self._end/(24*60*60)
+
+    @property
+    def sort(self):
+        return self._sort
+    
+    @property
+    def cond(self):
+        if self._sort in ("bhp","whp"):
+            return self._cond/6894.76
+        elif self._sort in ("orate","wrate"):
+            return self._cond/1.84013e-6
+        elif self._sort == "grate":
+            return self._cond/3.27741e-7
 
 class BoundCond():
 
@@ -54,30 +124,35 @@ class BoundCond():
 
         for key,value in kwargs.items():
             if value is not None:
+                self._sort = key
                 if key == "press":
-                    setattr(self,f"_{key}",value*6894.76)
-                elif key in ("orate","wrate","grate"):
-                    setattr(self,f"_{key}",value*1.84013e-6)
+                    self._cond = value*6894.76
+                elif key in ("orate","wrate"):
+                    self._cond = value*1.84013e-6
+                elif key == "grate":
+                    self._cond = value*3.27741e-7
                 break
 
+    @property
     def face(self):
         return self._face
 
-    def press(self):
-        return self._press/6894.76
-
-    def orate(self):
-        return self._orate/1.84013e-6
-
-    def wrate(self):
-        return self._wrate/1.84013e-6
-
-    def grate(self):
-        return self._grate/1.84013e-6
+    @property
+    def sort(self):
+        return self._sort
+    
+    @property
+    def cond(self):
+        if self._sort == "press":
+            return self._cond/6894.76
+        elif self._sort in ("orate","wrate"):
+            return self._cond/1.84013e-6
+        elif self._sort == "grate":
+            return self._cond/3.27741e-7
 
 class Tclass():
 
-    def __init__(self,grid,fluid,wcond=None,bcond=None):
+    def __init__(self,grid,fluid,wconds=None,bconds=None):
         """
         grid    : RecCuboid instance, rectangular cuboid grids
 
@@ -91,70 +166,60 @@ class Tclass():
 
         self.fluid = fluid
 
-        self.wcond = () if wcond is None else wcond
-        self.bcond = () if bcond is None else bcond
+        self.wconds = () if wconds is None else wconds
+        self.bconds = () if bconds is None else bconds
 
         self.set_static()
 
     def set_static(self):
         """Self assigns static transmissibility values."""
 
-        self._staticx = self.set_stat_innface('x')
+        self._staticx = self.set_stat_axis('x')
 
         if self.grid.flodim>1:
-            self._staticy = self.set_stat_innface('y')
+            self._staticy = self.set_stat_axis('y')
 
         if self.grid.flodim>2:
-            self._staticz = self.set_stat_innface('z')
+            self._staticz = self.set_stat_axis('z')
 
-        self._staticw = []
+        self._staticw = [self.set_stat_well(well) for well in self.wconds]
+        self._staticb = [self.set_stat_face(face) for face in self.bconds]
 
-        for well in self.wcond:
-            self._staticw.append(well.block)
-
-        self._staticb = []
-
-        for face, _ in self.bcond:
-
-            statics = self.set_stat_surface(face)
-
-            self._staticb.append(statics)
-
-    def Tmatrix(self,fluid):
+    def Tmatrix(self):
         """Returns transmissibility matrix with dynamic transmissibility values."""
 
         tmatrix = csr(self.matrix)
 
-        tmatrix = self.tcharge('x',fluid,tmatrix)
+        tmatrix = self.tcharge('x',tmatrix)
 
         if self.grid.flodim>1:
-            tmatrix = self.tcharge('y',fluid,tmatrix)
+            tmatrix = self.tcharge('y',tmatrix)
 
         if self.grid.flodim>2:
-            tmatrix = self.tcharge('z',fluid,tmatrix)
+            tmatrix = self.tcharge('z',tmatrix)
 
         return tmatrix
 
-    def Jmatrix(self,fluid,wcond=None):
+    def Jmatrix(self):
         """
         Returns J matrix filled with constant pressure boundary indices.
         """
 
         jmatrix = csr(self.matrix)
 
-        for index,(well,_) in enumerate(self.wcond):
+        for index,well in enumerate(self.wconds):
 
             diag = well.block
 
-            vals = 2*self._staticw[index]/fluid._viscosity
+            vals = self._staticw[index]/self.fluid._viscosity
 
             jmatrix += csr((vals,(diag,diag)),shape=self.matrix)
 
-        for index,(face,_) in enumerate(self.bcond):
+        for index,face in enumerate(self.bconds):
 
             diag = getattr(self.grid,face)
 
-            vals = 2*self._staticb[index]/fluid._viscosity
+            vals = 2*self._staticb[index]/self.fluid._viscosity
 
             jmatrix += csr((vals,(diag,diag)),shape=self.matrix)
 
@@ -166,34 +231,34 @@ class Tclass():
 
         return diags(pore_volume.flatten()/tstep)
 
-    def Qvector(self,fluid,wcond=None):
+    def Qvector(self):
         """
         Returns Q vector filled with constant pressure values.
         """
 
         qvector = csr(self.vector)
 
-        for index,(face,pressure) in enumerate(self.wcond):
+        for index,(face,pressure) in enumerate(self.wconds):
 
             diag = well.block
 
-            vals = 2*self._staticw[index]/fluid._viscosity*pressure*6894.76
+            vals = 2*self._staticw[index]/self.fluid._viscosity*pressure*6894.76
 
             qvector += csr((vals,(diag,numpy.zeros(diag.size))),shape=self.vector)
 
-        for index,(face,pressure) in enumerate(self.bcond):
+        for index,(face,pressure) in enumerate(self.bconds):
 
             diag = getattr(self.grid,face)
 
-            vals = 2*self._staticb[index]/fluid._viscosity*pressure*6894.76
+            vals = 2*self._staticb[index]/self.fluid._viscosity*pressure*6894.76
 
             qvector += csr((vals,(diag,numpy.zeros(diag.size))),shape=self.vector)
 
         return qvector
 
-    def Gvector(self,fluid,Tmatrix):
+    def Gvector(self,tmatrix):
 
-        return fluid._density*self._gravity*Tmatrix.dot(self.grid._depth)
+        return self.fluid._density*self._gravity*tmatrix.dot(self.grid._depth)
 
     @property
     def _gravity(self):
@@ -222,7 +287,7 @@ class Tclass():
         from SI Units to Oil Field Units."""
         return (3.28084**3*(24*60*60)*6894.76)
 
-    def tcharge(self,axis:str,fluid,tmatrix:csr):
+    def tcharge(self,axis:str,tmatrix:csr):
         """
         Returns updated transmissibility matrix:
 
@@ -235,7 +300,7 @@ class Tclass():
 
         stat = getattr(self,f"_static{axis}")
 
-        vals = stat/fluid._viscosity
+        vals = stat/self.fluid._viscosity
 
         dneg = getattr(self.grid,f"{axis}neg")
         dpos = getattr(self.grid,f"{axis}pos")
@@ -248,7 +313,7 @@ class Tclass():
 
         return tmatrix
 
-    def set_stat_innface(self,axis):
+    def set_stat_axis(self,axis):
         """Returns static transmissibility values for the given
         direction and inner faces (interfaces)."""
         
@@ -268,7 +333,7 @@ class Tclass():
 
         return self.stat_stat(dims,area,perm)
 
-    def set_stat_vwell(self,well):
+    def set_stat_well(self,well):
         """Returns static transmissibility values for the given
         vertical well."""
 
@@ -276,21 +341,23 @@ class Tclass():
         dy = self.grid._ydims[well.block]
         dz = self.grid._zdims[well.block]
 
-        req = 0.14*numpy.sqrt(dx**2+dy**2)
-
         kx = self.grid._xperm[well.block]
         ky = self.grid._yperm[well.block]
+        kz = self.grid._zperm[well.block]
 
-        upper = numpy.pi*dz*numpy.sqrt(kx*ky)
-        lower = numpy.log(req/well.radius)+well.skin
+        if well.axis == "x":
+            dkh = dx*numpy.sqrt(ky*kz)
+            req = self.stat_well(dy,dz,ky,kz)
+        elif well.axis == "y":
+            dkh = dy*numpy.sqrt(kz*kx)
+            req = self.stat_well(dz,dx,kz,kx)
+        elif well.axis == "z":
+            dkh = dz*numpy.sqrt(kx*ky)
+            req = self.stat_well(dx,dy,kx,ky)
 
-        return 2*upper/lower
+        return (2*numpy.pi*dkh)/(numpy.log(req/well.radius)+well.skin)
 
-    def set_stat_hwell(self,well):
-
-        return
-
-    def set_stat_surface(self,face):
+    def set_stat_face(self,face):
         """Returns static transmissibility values for the given
         surface on the exterior boundary."""
         
@@ -316,12 +383,23 @@ class Tclass():
     def stat_stat(dims,area,perm):
         return (perm*area)/dims
 
+    @staticmethod
+    def stat_well(dims1,dims2,perm1,perm2):
+
+        sqrt21 = numpy.power(perm2/perm1,1/2)*numpy.power(dims1,2)
+        sqrt12 = numpy.power(perm1/perm2,1/2)*numpy.power(dims2,2)
+
+        quar21 = numpy.power(perm2/perm1,1/4)
+        quar12 = numpy.power(perm1/perm2,1/4)
+
+        return 0.28*numpy.sqrt(sqrt21+sqrt12)/(quar21+quar12)
+
 class OnePhase(Tclass):
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
 
-    def __init__(self,grid,fluid,wcond=None,bcond=None,theta=0):
+    def __init__(self,grid,fluid,wconds=None,bconds=None,theta=0):
         """
         grid  : It is a RecCuboid (rectangular cuboid) object.
 
@@ -340,7 +418,7 @@ class OnePhase(Tclass):
 
         """
 
-        super().__init__(grid,fluid,wcond,bcond)
+        super().__init__(grid,fluid,wconds,bconds)
 
         self.theta = theta
 
