@@ -48,19 +48,19 @@ class RelPerm():
 
     def __init__(self,Sorow=0.4,Sorgo=0.4,Swc=0.1,Sgc=0.05,krowc=0.8,krwor=0.3,krogc=0.8,krglc=0.3,no=2,nw=2,ng=2,Som=None):
 
-        self.Sorow = Sorow
-        self.Sorgo = Sorgo
-        self.Swc = Swc
-        self.Sgc = Sgc
-        self.krowc = krowc
-        self.krwor = krwor
-        self.krogc = krogc
-        self.krglc = krglc
-        self.no = no
-        self.nw = nw
-        self.ng = ng
+        self.Sorow  = Sorow
+        self.Sorgo  = Sorgo
+        self.Swc    = Swc
+        self.Sgc    = Sgc
+        self.krowc  = krowc
+        self.krwor  = krwor
+        self.krogc  = krogc
+        self.krglc  = krglc
+        self.no     = no
+        self.nw     = nw
+        self.ng     = ng
 
-        self.Som = Som
+        self.Som    = Som
         
     def water_oil(self,Sw):
 
