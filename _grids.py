@@ -348,7 +348,7 @@ class HexaHedron():
 
 class RecCuboid():
 
-	def __init__(self,xdelta:tuple=None,ydelta:tuple=None,zdelta:tuple=None,length:float=None,width:float=None,height:float=None,num:tuple=None,flodim:int=None):
+	def __init__(self,xdelta:tuple=None,ydelta:tuple=None,zdelta:tuple=None,dims:tuple=None,num:tuple=None,flodim:int=None):
 		"""Three-dimensional reservoir model can be initialized in two different ways:
 		
 		Method 1:
@@ -358,6 +358,8 @@ class RecCuboid():
 		zdelta	: height of grids in ft, (Nheight,)
 
 		Method 2:
+
+		dims 	: reservoir dimensions (length x width x height)
 
 		length 	: length of reservoir in ft, (x direction)
 		width 	: width of reservoir in ft, (y direction)
@@ -373,10 +375,10 @@ class RecCuboid():
 
 		"""
 
-		if isinstance(xdelta,tuple): # Method 1:
+		if xdelta is not None: # Method 1:
 			self.init1(xdelta,ydelta,zdelta)
 		else:						 # Method 2:
-			self.init2(legnth,width,height,num)
+			self.init2(*dims,num)
 
 		# The parameters starting with underscore are defined in SI units.
 		# The same parameters without underscore are in Oil Field units.
