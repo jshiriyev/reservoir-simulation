@@ -152,7 +152,7 @@ class Matrix():
 
     _gravity = 9.807  # Gravitational acceleration in SI units
 
-    def __init__(self,grid,fluid,wconds=None,bconds=None):
+    def __init__(self,grid,fluid,wconds=None,bconds=None,**kwargs):
         """
         grid    : RecCuboid instance, rectangular cuboid grids
 
@@ -171,6 +171,8 @@ class Matrix():
 
         self.set_static()
 
+        self.update(**kwargs)
+
     def set_static(self):
         """Self assigns static transmissibility values."""
 
@@ -188,8 +190,18 @@ class Matrix():
         self._staticw = [self.set_stat_well(wcond) for wcond in self.wconds]
         self._staticb = [self.set_stat_face(bcond) for bcond in self.bconds]
 
-    def Tmatrix(self):
-        """Returns transmissibility matrix with dynamic transmissibility values."""
+    def update(self,press=None,temp=None,depth=None):
+
+        self.set_Tmatrix()
+        self.set_Jmatrix()
+        self.set_Amatrix()
+        self.set_Qvector()
+        self.set_Gvector()
+
+    def set_Tmatrix(self):
+        """
+        Sets transmissibility matrix with dynamic transmissibility values.
+        """
 
         tmatrix = csr(self.matrix)
 
@@ -201,11 +213,11 @@ class Matrix():
         if self.grid.flodim>2:
             tmatrix = self.tcharge('z',tmatrix)
 
-        return tmatrix
+        self._Tmatrix = tmatrix
 
-    def Jmatrix(self):
+    def set_Jmatrix(self):
         """
-        Returns J matrix filled with constant pressure boundary indices.
+        Sets J matrix filled with dynamic constant pressure coefficients.
         """
 
         jmatrix = csr(self.matrix)
@@ -216,17 +228,19 @@ class Matrix():
         for index,bcond in enumerate(self.bconds):
             jmatrix += self.jcharge(bcond,self._staticb[index],jmatrix)
 
-        return jmatrix
+        self._Jmatrix = jmatrix
 
-    def Amatrix(self):
-
+    def set_Amatrix(self):
+        """
+        Sets A matrix filled with pore volume values.
+        """
         pore_volume = self.grid._volume*self.grid._poro
 
-        return diags(pore_volume.flatten())
+        self._Amatrix = diags(pore_volume.flatten())
 
-    def Qvector(self):
+    def set_Qvector(self):
         """
-        Returns Q vector filled with constant pressure values.
+        Sets Q vector filled with dynamic constant rate and pressure coefficients.
         """
 
         qvector = csr(self.vector)
@@ -237,11 +251,13 @@ class Matrix():
         for index,bcond in enumerate(self.bconds):
             qvector += self.qcharge(bcond,self._staticb[index],qvector)
 
-        return qvector
+        self._Qvector = qvector
 
-    def Gvector(self,tmatrix):
-
-        return self.fluid._density*self._gravity*tmatrix.dot(self.grid._depth)
+    def set_Gvector(self):
+        """
+        Sets G vector filled with dynamic gravity coefficients.
+        """
+        self._Gvector = self.fluid._density*self._gravity*self._Tmatrix.dot(self.grid._depth)
 
     @property
     def matrix(self):
@@ -254,36 +270,29 @@ class Matrix():
         return (self.grid.numtot,1)
 
     @property
-    def trans2si(self):
-        """Conversion factor for transmissibility value,
-        from Oil Field Units to SI Units."""
-        return 1/(3.28084**3*(24*60*60)*6894.76)
+    def Tmatrix(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Tmatrix*(3.28084**3*(24*60*60)*6894.76)
 
     @property
-    def trans2field(self):
-        """Conversion factor for transmissibility value,
-        from SI Units to Oil Field Units."""
-        return (3.28084**3*(24*60*60)*6894.76)
+    def Jmatrix(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Jmatrix*(3.28084**3*(24*60*60)*6894.76)
+    
+    @property
+    def Amatrix(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Amatrix*(3.28084**3)
+    
+    @property
+    def Qvector(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Qvector*(3.28084**3*(24*60*60))
 
     @property
-    def volume2si(self):
-        """Conversion factor for transmissibility value,
-        from Oil Field Units to SI Units."""
-        return 1/(3.28084**3*(24*60*60))
-
-    @property
-    def volume2field(self):
-        """Conversion factor for transmissibility value,
-        from SI Units to Oil Field Units."""
-        return (3.28084**3*(24*60*60))
-
-    @property
-    def pa2psi(self):
-        return 1/6894.76
-
-    @property
-    def psi2pa(self):
-        return 6894.76
+    def Gvector(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Gvector*(3.28084**3*(24*60*60))
 
     def tcharge(self,axis:str,tmatrix:csr):
         """
@@ -416,6 +425,16 @@ class Matrix():
 
         return 0.28*numpy.sqrt(sqrt21+sqrt12)/(quar21+quar12)
 
+    @property
+    def pa2psi(self):
+        """Pressure conversion factor from SI Units to Oil Field Units."""
+        return 1/6894.76
+
+    @property
+    def psi2pa(self):
+        """Pressure conversion factor from Oil Field Units to SI Units."""
+        return 6894.76
+
 class OnePhase(Matrix):
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
@@ -475,31 +494,32 @@ class OnePhase(Matrix):
         self._pinit = self.pzero(
             dref*0.3048,pref*6894.76,self.grid._depth,self.fluid._density)
 
-        self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
-
         self._ctotal = ctotal/6894.76
-
-    def Amatrix(self):
-        return super().Amatrix()*self._ctotal/self._tstep
 
     def solve(self):
 
         P = self._pinit
 
-        T = self.Tmatrix()
-        J = self.Jmatrix()
-        A = self.Amatrix()
-        Q = self.Qvector()
-        G = self.Gvector(T)
+        self.update()
+
+        T = self._Tmatrix
+        J = self._Jmatrix
+        A = self._Amatrix
+        Q = self._Qvector
+        G = self._Gvector
+
+        Act = A*(self._ctotal/self._tstep)
+
+        self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
         
         for k in range(self.nstep):
 
             if self.theta==0:
-                P = self.implicit(P,T,J,A,Q,G)
+                P = self.implicit(P,T,J,Act,Q,G)
             elif self.theta==1:
-                P = self.explicit(P,T,J,A,Q,G)
+                P = self.explicit(P,T,J,Act,Q,G)
             else:
-                P = self.mixed(P,T,J,A,Q,G,self.theta)
+                P = self.mixed(P,T,J,Act,Q,G,self.theta)
 
             print(f"{k} time step is complete...")
             
@@ -573,6 +593,11 @@ class OnePhase(Matrix):
     @property
     def time(self):
         return self._time/(24*60*60)
+
+    @property
+    def Act(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Amatrix*self._ctotal/self._tstep*(3.28084**3*(24*60*60)*6894.76)
 
     @property
     def pressure(self):
