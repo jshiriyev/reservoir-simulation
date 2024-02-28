@@ -17,18 +17,6 @@ class Fluid:
 
 class Gas():
 
-    A1  = 0.3265
-    A2  = -1.0700
-    A3  = -0.5339
-    A4  = 0.01569
-    A5  = -0.05165
-    A6  = 0.5475
-    A7  = -0.7361
-    A8  = 0.1844
-    A9  = 0.1056
-    A10 = 0.6134
-    A11 = 0.7210
-
     def __init__(self,grav:float):
         """
         grav    : gas specific gravity
@@ -136,4 +124,23 @@ class Gas():
         rho = (self.press*self.molmass)/(self._zfact*10.731577089016*self.temp)
         
         return A*math.exp(B*rho**C)/10000
-    
+
+class Oil():
+
+    def __init__(self):
+
+        pass
+
+    def update(self):
+
+        pass
+
+class Water():
+
+    def __init__(self):
+
+        pass
+
+    def update(self):
+
+        pass
