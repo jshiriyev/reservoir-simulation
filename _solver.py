@@ -536,6 +536,12 @@ class OnePhase(Matrix):
         """Explicit solution of one-phase flow."""
         return P+linalg.spsolve(Act,csr.dot(-(T+J),P)+Q+G)
 
+    @staticmethod
+    def residual(P,T,J,Act,Q,G,Pn):
+        """Returns residual vector for the given n+1 values of
+        (P,T,J,Act,Q,G), and n values of (P,)"""
+        return -csr.dot(T+J+Act,P)+csr.dot(Act,Pn)+Q+G
+
     def postprocess(self):
 
         Y = int((self.grid.numtot-1)/2)
