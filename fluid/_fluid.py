@@ -7,13 +7,21 @@ from scipy import optimize
 @dataclass(frozen=True)
 class Fluid:
     
-    density		: float
-    viscosity   : float
+    rho		: float
+    visc    : float
+    comp    : float = None
+    fvf     : float = None
 
     def __post_init__(self):
 
-        object.__setattr__(self,'_density',self.density*16.0185)
-        object.__setattr__(self,'_viscosity',self.viscosity*0.001)
+        object.__setattr__(self,'_rho',self.rho*16.0185)
+        object.__setattr__(self,'_visc',self.visc*0.001)
+
+        if self.comp is not None:
+            object.__setattr__(self,'_comp',self.comp/6894.76)
+
+        if self.fvf is not None:
+            object.__setattr__(self,'_fvf',self.fvf)
 
 class Gas():
 
@@ -48,7 +56,7 @@ class Gas():
         for high molecular weigth reservoir gases"""
         return 169.2+349.5*self._grav-74*self._grav**2
 
-    def update(self,P,T):
+    def __call__(self,P,T):
         """
         P       Pressure, psia
         T       Temperature, °R

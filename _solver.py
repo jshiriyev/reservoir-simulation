@@ -150,9 +150,68 @@ class BoundCond():
 
 class Matrix():
 
+    def __init__(self,T,A,G,J,Q):
+
+        self._Tmatrix = T
+        self._Amatrix = A
+        self._Gvector = G
+        self._Jmatrix = J
+        self._Qvector = Q
+
+    @property
+    def T(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._T*(3.28084**3*(24*60*60)*6894.76)
+    
+    @property
+    def A(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._A*(3.28084**3)
+
+    @property
+    def G(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._G*(3.28084**3*(24*60*60))
+
+    @property
+    def J(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._J*(3.28084**3*(24*60*60)*6894.76)
+    
+    @property
+    def Q(self):
+        """Converting from SI Units to Oil Field Units."""
+        return self._Q*(3.28084**3*(24*60*60))
+
+    def Act(self,ctotal,tstep):
+        """Converting from SI Units to Oil Field Units."""
+        return self._A*ctotal/tstep*(3.28084**3*(24*60*60)*6894.76)
+
+    def residual(self,ctotal,tstep,Pn):
+        """Returns residual vector for the given n+1 values of
+        (P,T,J,Act,Q,G), and n values of (P,)"""
+        T   = self._T
+        Act = self.Act(ctotal,tstep)
+        G   = self._G
+        J   = self._J
+        Q   = self._Q
+        return -csr.dot(T+J+Act,P)+csr.dot(Act,Pn)+Q+G
+
+    @property
+    def pa2psi(self):
+        """Pressure conversion factor from SI Units to Oil Field Units."""
+        return 1/6894.76
+
+    @property
+    def psi2pa(self):
+        """Pressure conversion factor from Oil Field Units to SI Units."""
+        return 6894.76
+
+class ResRock():
+
     _gravity = 9.807  # Gravitational acceleration in SI units
 
-    def __init__(self,grid,fluid,wconds=None,bconds=None,**kwargs):
+    def __init__(self,grid,fluid,wconds=None,bconds=None):
         """
         grid    : RecCuboid instance, rectangular cuboid grids
 
@@ -170,8 +229,6 @@ class Matrix():
         self.bconds = () if bconds is None else bconds
 
         self.set_static()
-
-        self.update(**kwargs)
 
     def set_static(self):
         """Self assigns static transmissibility values."""
@@ -242,15 +299,17 @@ class Matrix():
 
         return self.get_block_tranny(dims,area,perm)
 
-    def update(self,press=None,temp=None,depth=None):
+    def __call__(self,press=None,temp=None,depth=None):
 
-        self.set_Tmatrix()
-        self.set_Jmatrix()
-        self.set_Amatrix()
-        self.set_Qvector()
-        self.set_Gvector()
+        T = self.get_Tmatrix()
+        A = self.get_Amatrix()
+        G = self.get_Gvector()
+        J = self.get_Jmatrix()
+        Q = self.get_Qvector()
 
-    def set_Tmatrix(self):
+        return Matrix(T,A,G,J,Q)
+
+    def get_Tmatrix(self):
         """
         Sets transmissibility matrix with dynamic transmissibility values.
         """
@@ -265,51 +324,7 @@ class Matrix():
         if self.grid.flodim>2:
             tmatrix = self.tcharge('z',tmatrix)
 
-        self._Tmatrix = tmatrix
-
-    def set_Jmatrix(self):
-        """
-        Sets J matrix filled with dynamic constant pressure coefficients.
-        """
-
-        jmatrix = csr(self.matrix)
-
-        for index,wcond in enumerate(self.wconds):
-            jmatrix += self.jcharge(wcond,self._staticw[index],jmatrix)
-
-        for index,bcond in enumerate(self.bconds):
-            jmatrix += self.jcharge(bcond,self._staticb[index],jmatrix)
-
-        self._Jmatrix = jmatrix
-
-    def set_Amatrix(self):
-        """
-        Sets A matrix filled with pore volume values.
-        """
-        pore_volume = self.grid._volume*self.grid._poro
-
-        self._Amatrix = diags(pore_volume.flatten())
-
-    def set_Qvector(self):
-        """
-        Sets Q vector filled with dynamic constant rate and pressure coefficients.
-        """
-
-        qvector = csr(self.vector)
-
-        for index,wcond in enumerate(self.wconds):
-            qvector += self.qcharge(wcond,self._staticw[index],qvector)
-
-        for index,bcond in enumerate(self.bconds):
-            qvector += self.qcharge(bcond,self._staticb[index],qvector)
-
-        self._Qvector = qvector
-
-    def set_Gvector(self):
-        """
-        Sets G vector filled with dynamic gravity coefficients.
-        """
-        self._Gvector = self.fluid._density*self._gravity*self._Tmatrix.dot(self.grid._depth)
+        return tmatrix
 
     def tcharge(self,axis:str,tmatrix:csr):
         """
@@ -337,6 +352,35 @@ class Matrix():
 
         return tmatrix
 
+    def get_Amatrix(self):
+        """
+        Sets A matrix filled with pore volume values.
+        """
+        pore_volume = self.grid._volume*self.grid._poro
+
+        return diags(pore_volume.flatten())
+
+    def get_Gvector(self):
+        """
+        Sets G vector filled with dynamic gravity coefficients.
+        """
+        return self.fluid._density*self._gravity*self._Tmatrix.dot(self.grid._depth)
+
+    def get_Jmatrix(self):
+        """
+        Sets J matrix filled with dynamic constant pressure coefficients.
+        """
+
+        jmatrix = csr(self.matrix)
+
+        for index,wcond in enumerate(self.wconds):
+            jmatrix += self.jcharge(wcond,self._staticw[index],jmatrix)
+
+        for index,bcond in enumerate(self.bconds):
+            jmatrix += self.jcharge(bcond,self._staticb[index],jmatrix)
+
+        return jmatrix
+
     def jcharge(self,cond,static,jmatrix:csr):
 
         if cond.sort=="press":
@@ -345,6 +389,21 @@ class Matrix():
             jmatrix += csr((jvalues,(cond.block,cond.block)),shape=self.matrix)
 
         return jmatrix
+
+    def get_Qvector(self):
+        """
+        Sets Q vector filled with dynamic constant rate and pressure coefficients.
+        """
+
+        qvector = csr(self.vector)
+
+        for index,wcond in enumerate(self.wconds):
+            qvector += self.qcharge(wcond,self._staticw[index],qvector)
+
+        for index,bcond in enumerate(self.bconds):
+            qvector += self.qcharge(bcond,self._staticb[index],qvector)
+
+        return qvector
 
     def qcharge(self,cond,static,qvector:csr):
 
@@ -360,41 +419,6 @@ class Matrix():
         qvector += csr((qvalues,(cond.block,indices)),shape=self.vector)
 
         return qvector
-
-    @property
-    def matrix(self):
-        """Shape of the matrices of transmissibility calculations"""
-        return (self.grid.numtot,self.grid.numtot)
-
-    @property
-    def vector(self):
-        """Shape of the vectors of transmissibility calculations"""
-        return (self.grid.numtot,1)
-
-    @property
-    def Tmatrix(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Tmatrix*(3.28084**3*(24*60*60)*6894.76)
-
-    @property
-    def Jmatrix(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Jmatrix*(3.28084**3*(24*60*60)*6894.76)
-    
-    @property
-    def Amatrix(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Amatrix*(3.28084**3)
-    
-    @property
-    def Qvector(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Qvector*(3.28084**3*(24*60*60))
-
-    @property
-    def Gvector(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Gvector*(3.28084**3*(24*60*60))
 
     @staticmethod
     def get_block_tranny(dims,area,perm):
@@ -416,16 +440,16 @@ class Matrix():
         return (2*perm1*perm2)/(perm1+perm2)
 
     @property
-    def pa2psi(self):
-        """Pressure conversion factor from SI Units to Oil Field Units."""
-        return 1/6894.76
+    def matrix(self):
+        """Shape of the matrices of transmissibility calculations"""
+        return (self.grid.numtot,self.grid.numtot)
 
     @property
-    def psi2pa(self):
-        """Pressure conversion factor from Oil Field Units to SI Units."""
-        return 6894.76
+    def vector(self):
+        """Shape of the vectors of transmissibility calculations"""
+        return (self.grid.numtot,1)
 
-class OnePhase(Matrix):
+class OnePhase():
     """
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
@@ -536,12 +560,6 @@ class OnePhase(Matrix):
         """Explicit solution of one-phase flow."""
         return P+linalg.spsolve(Act,csr.dot(-(T+J),P)+Q+G)
 
-    @staticmethod
-    def residual(P,T,J,Act,Q,G,Pn):
-        """Returns residual vector for the given n+1 values of
-        (P,T,J,Act,Q,G), and n values of (P,)"""
-        return -csr.dot(T+J+Act,P)+csr.dot(Act,Pn)+Q+G
-
     def postprocess(self):
 
         Y = int((self.grid.numtot-1)/2)
@@ -589,11 +607,6 @@ class OnePhase(Matrix):
     @property
     def time(self):
         return self._time/(24*60*60)
-
-    @property
-    def Act(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._Amatrix*self._ctotal/self._tstep*(3.28084**3*(24*60*60)*6894.76)
 
     @property
     def pressure(self):
