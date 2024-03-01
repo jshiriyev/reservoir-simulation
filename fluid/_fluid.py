@@ -45,6 +45,7 @@ class Gas():
         """Molecular Mass, lb/lbmol"""
         return 28.964*self._grav
 
+    @property
     def _molmass(self):
         """Molecular Mass, kg/mol"""
         return 28.964*self._grav/1000
