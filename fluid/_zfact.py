@@ -1,5 +1,3 @@
-import math
-
 import numpy
 
 from scipy import optimize
@@ -24,7 +22,7 @@ Hall Yarborough method is not recommended for application\n\
 if pseudo-reduced temperature is less than one.
 """
 
-def Hall_Yarborough(Pr,Tr):
+def Hall_Yarborough(Pr:numpy.ndarray,Tr:float):
 	"""
 	Hall-Yarborough Method
 
@@ -32,22 +30,24 @@ def Hall_Yarborough(Pr,Tr):
 	Tr	: reduced temperatue
 	"""
 
+	Pr = numpy.asarray(Pr)
+
 	if Tr<1:
 		raise Warning(HY)
 
-	X1 = -0.06125*Pr/Tr*math.exp(-1.2*(1-1/Tr)**2)
+	X1 = -0.06125*Pr/Tr*numpy.exp(-1.2*(1-1/Tr)**2)
 	X2 = 14.76/Tr-9.76/Tr**2+4.58/Tr**3
 	X3 = 90.7/Tr-242.2/Tr**2+42.4/Tr**3
 	X4 = 2.18+2.82/Tr
 
-	FYF = lambda Y: X1+(Y+Y**2+Y**3+Y**4)/(1-Y)**3-X2*Y**2+X3*Y**X4
-	FYP = lambda Y: (1+4*Y+4*Y**2-4*Y**3+Y**4)/(1-Y)**4-2*X2*Y+X3*X4*Y**(X4-1)
+	residual = lambda Y: X1+(Y+Y**2+Y**3+Y**4)/(1-Y)**3-X2*Y**2+X3*Y**X4
+	resprime = lambda Y: (1+4*Y+4*Y**2-4*Y**3+Y**4)/(1-Y)**4-2*X2*Y+X3*X4*Y**(X4-1)
 
-	Y0 = 0.0125*Pr/Tr*math.exp(-1.2*(1-1/Tr)**2) # initial guess for Y
+	Y0 = 0.0125*Pr/Tr*numpy.exp(-1.2*(1-1/Tr)**2) # initial guess for Y
 
-	Y = optimize.newton(FYF,Y0,fprime=FYP)
+	Y = optimize.newton(residual,Y0,fprime=resprime)
 
-	return 0.06125*Pr/Tr/Y*math.exp(-1.2*(1-1/Tr)**2)
+	return -X1/Y
 
 DAK = """
 Dranchuk-Abu-Kassem method represents the Standing-Katz correlation:\n\
@@ -55,19 +55,23 @@ Dranchuk-Abu-Kassem method represents the Standing-Katz correlation:\n\
  15 < Pr < 30 within 3% error.
 """
 
-def Dranchuk_Abu_Kassem(Pr,Tr):
+def Dranchuk_Abu_Kassem(Pr:numpy.ndarray,Tr:float,*,derivative=False):
 	"""
-	Dranchuk-Abu-Kassem Method
+	Dranchuk-Abu-Kassem Method for calculation of z-factor.
 
 	Pr	: reduced pressure
 	Tr	: reduced temperatue
+	
+	If derivative is True, the derivative of z w.r.t rhor is also returned.
 	"""
 
-	if Pr>30:
+	Pr = numpy.asarray(Pr)
+
+	if numpy.any(Pr>30):
 		raise Warning(DAK)
-	elif Pr<0.2:
+	elif numpy.any(Pr<0.2):
 		raise Warning(DAK)
-	elif Pr<15 and (Tr<0.7 or Tr>3.0):
+	elif numpy.any(Pr<15) and (Tr<0.7 or Tr>3.0):
 		raise Warning(DAK)
 		
 	A1  =  0.3265
@@ -88,15 +92,21 @@ def Dranchuk_Abu_Kassem(Pr,Tr):
 	R4 = A10/Tr**3
 	R5 = (0.27*Pr)/Tr
 
-	FYF = lambda rhor: 1+R1*rhor+R2*rhor**2-R3*rhor**5\
-			+R4*(1+A11*rhor**2)*rhor**2*math.exp(-A11*rhor**2)-R5/rhor
+	zfunc = lambda rhor: 1+R1*rhor+R2*rhor**2-R3*rhor**5\
+			+R4*(1+A11*rhor**2)*rhor**2*numpy.exp(-A11*rhor**2)
 
-	FYP = lambda rhor: R1+2*R2*rhor-5*R3*rhor**4\
-			+2*R4*rhor*(1+A11*rhor**2*(1-A11*rhor**2))*math.exp(-A11*rhor**2)+R5/rhor**2
+	prime = lambda rhor: R1+2*R2*rhor-5*R3*rhor**4\
+			+2*R4*rhor*(1+A11*rhor**2*(1-A11*rhor**2))*numpy.exp(-A11*rhor**2)
 
-	rhor = optimize.newton(FYF,R5,fprime=FYP)
+	residual = lambda rhor: zfunc(rhor)-R5/rhor
+	resprime = lambda rhor: prime(rhor)+R5/rhor**2
 
-	return (0.27*Pr)/(rhor*Tr)
+	rhor = optimize.newton(residual,R5,fprime=resprime)
+
+	if derivative:
+		return R5/rhor,prime(rhor)
+
+	return R5/rhor
 
 DPR = """
 Dranchuk-Purvis-Robinson method is recommended for applications where\n\
@@ -129,12 +139,14 @@ def Dranchuk_Purvis_Robinson(Pr,Tr):
 	T4 = A7/Tr**3
 	T5 = (0.27*Pr)/Tr
 
-	FYF = lambda rhor: 1+T1*rhor+T2*rhor**2+T3*rhor**5\
-		+(T4*rhor**2*(1+A8*rhor**2)*math.exp(-A8*rhor**2))-T5/rhor
+	zfunc = lambda rhor: 1+T1*rhor+T2*rhor**2+T3*rhor**5\
+		+(T4*rhor**2*(1+A8*rhor**2)*math.exp(-A8*rhor**2))
 
-	rhor = optimize.newton(FYF,T5)
+	residual = lambda rhor: zfunc(rhor)-T5/rhor
 
-	return (0.27*Pr)/(rhor*Tr)
+	rhor = optimize.newton(residual,T5)
+
+	return T5/rhor
 
 if __name__=="__main__":
 
@@ -144,27 +156,26 @@ if __name__=="__main__":
 
 	Pr,Tr = 2.99,1.52
 
-	print(unknown(Pr,Tr))
+	# print(unknown(Pr,Tr))
 	# print(Hall_Yarborough(Pr,Tr))
-	print(Dranchuk_Abu_Kassem(Pr,Tr))
+	# print(Dranchuk_Abu_Kassem(Pr,Tr))
 	# print(Dranchuk_Purvis_Robinson(Pr,Tr))
 
 	Pr = np.linspace(0.2,8,200)
 
-	z1 = unknown(Pr,Tr)
+	# z1 = unknown(Pr,Tr)
 	# z2 = np.zeros(Pr.shape)
-	z3 = np.zeros(Pr.shape)
+	z3,d3 = Dranchuk_Abu_Kassem(Pr,Tr,derivative=True)
 	# z4 = np.zeros(Pr.shape)
 
-	for i,P in enumerate(Pr):
-		# z2[i] = Hall_Yarborough(P,Tr)
-		z3[i] = Dranchuk_Abu_Kassem(P,Tr)
-		# z4[i] = Dranchuk_Purvis_Robinson(P,Tr)
-
-	plt.plot(Pr,z1,label = "unknown")
+	# plt.plot(Pr,z1,label = "unknown")
 	# plt.plot(Pr,z2,label = "Hall_Yarborough")
 	plt.plot(Pr,z3,label = "Dranchuk_Abu_Kassem")
 	# plt.plot(Pr,z4,label = "Dranchuk_Purvis_Robinson")
+
+	cr3 = 1/(1+(0.27*Pr)/(z3**2*Tr)*d3)/Pr
+
+	plt.plot(Pr,cr3,label = "Reduced Compressibility")
 
 	plt.legend()
 
