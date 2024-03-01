@@ -9,6 +9,25 @@ from respy.fluid._zfact import Hall_Yarborough
 from respy.fluid._zfact import Dranchuk_Abu_Kassem
 from respy.fluid._zfact import Dranchuk_Purvis_Robinson
 
+"""
+ 1. Watch Python packaging again and setup parent directory accordingly
+ 2. Complete the exercise with zfactor, get the graph
+ 3. Complete all zfactor methods to give z and cg
+ 4. Exercise for single phase compressible flow analytical solution
+ 5. Finalize linear module one-phase flow
+ 6. Benchmark numerical solution for compressible flow
+ 7. Finalize the single phase flow of all kinds, all non-linearities in mind
+ 8. Two phase flow of water and oil, no capillary pressure
+ 9. Finalize Buckley Leverett solution
+10. Benchmark numerical solution with Buckley Leverett
+11. Effective implementation of upwinding
+12. Finalize Relative Permeability curves
+13. Two phase flow of water and oil, with capillary pressure
+14. Finalize capillary pressure models.
+15. Finalize two phase flow
+16. Finalize three phase flow
+"""
+
 @dataclass(frozen=True)
 class Fluid:
     
