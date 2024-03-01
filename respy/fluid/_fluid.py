@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import numpy
 
 from scipy import optimize
@@ -10,42 +8,50 @@ from respy.fluid._zfact import Dranchuk_Abu_Kassem
 from respy.fluid._zfact import Dranchuk_Purvis_Robinson
 
 """
- 1. Watch Python packaging again and setup parent directory accordingly
- 2. Complete the exercise with zfactor, get the graph
- 3. Complete all zfactor methods to give z and cg
- 4. Exercise for single phase compressible flow analytical solution
- 5. Finalize linear module one-phase flow
- 6. Benchmark numerical solution for compressible flow
- 7. Finalize the single phase flow of all kinds, all non-linearities in mind
- 8. Two phase flow of water and oil, no capillary pressure
- 9. Finalize Buckley Leverett solution
-10. Benchmark numerical solution with Buckley Leverett
-11. Effective implementation of upwinding
-12. Finalize Relative Permeability curves
-13. Two phase flow of water and oil, with capillary pressure
-14. Finalize capillary pressure models.
-15. Finalize two phase flow
-16. Finalize three phase flow
+ 1. Complete the exercise with zfactor, get the graph
+ 2. Complete all zfactor methods to give z and cg
+ 3. Exercise for single phase compressible flow analytical solution
+ 4. Finalize linear module one-phase flow
+ 5. Benchmark numerical solution for compressible flow
+ 6. Finalize the single phase flow of all kinds, all non-linearities in mind
+ 7. Two phase flow of water and oil, no capillary pressure
+ 8. Finalize Buckley Leverett solution
+ 9. Benchmark numerical solution with Buckley Leverett
+10. Effective implementation of upwinding
+11. Finalize Relative Permeability curves
+12. Two phase flow of water and oil, with capillary pressure
+13. Finalize capillary pressure models.
+14. Finalize two phase flow
+15. Finalize three phase flow
 """
 
-@dataclass(frozen=True)
-class Fluid:
-    
-    rho		: float
-    visc    : float
-    comp    : float = None
-    fvf     : float = None
+class Fluid():
 
-    def __post_init__(self):
+    def __init__(self,visc=None,rho=None,comp=None,fvf=None)
+        
+        self._visc  = visc*0.001
+        self._rho   = rho*16.0185
+        self._comp  = comp/6894.76
+        self._fvf   = fvf
 
-        object.__setattr__(self,'_rho',self.rho*16.0185)
-        object.__setattr__(self,'_visc',self.visc*0.001)
+    @property
+    def visc(self):
+        if self._visc is not None:
+            return self._visc/0.001
 
-        if self.comp is not None:
-            object.__setattr__(self,'_comp',self.comp/6894.76)
+    @property
+    def rho(self):
+        if self._rho is not None:
+            return self._rho/16.0185
 
-        if self.fvf is not None:
-            object.__setattr__(self,'_fvf',self.fvf)
+    @property
+    def comp(self):
+        if self._comp is not None:
+            return self._comp*6894.76
+
+    @property
+    def fvf(self):
+        return self._fvf
 
 class Gas():
 
@@ -92,23 +98,13 @@ class Gas():
 
         Z,Zprime = self.get_zfact(Pr,Tr,method=method)
 
-        rho  = self.get_rho(P,T,Z,M)
         visc = self.get_visc(P,T,Z,M)
+        rho  = self.get_rho(P,T,Z,M)
         comp = self.get_comp(Pr,Tr,Z,Zprime)/self.pcrit
         fvf  = self.get_fvf(P,T,Z)
 
-        return Fluid(rho,visc,comp,fvf)
-    
-    @staticmethod
-    def get_zfact(Pr,Tr,method=None):
-        """Function to Calculate Gas Compressibility Factor"""
-        return
-
-    @staticmethod
-    def get_rho(P,T,Z,M):
-        """Returns density value in lb/ft3"""
-        return (P*M)/(Z*10.731577089016*T)
-
+        return Fluid(visc,rho,comp,fvf)
+        
     @staticmethod
     def get_visc(P,T,Z,M):
         """Returns Gas Viscosity in cp"""
@@ -119,6 +115,16 @@ class Gas():
         rho = (P*M)/(Z*10.731577089016*T)
         
         return A*numpy.exp(B*rho**C)/10000
+
+    @staticmethod
+    def get_zfact(Pr,Tr,method=None):
+        """Function to Calculate Gas Compressibility Factor"""
+        return
+
+    @staticmethod
+    def get_rho(P,T,Z,M):
+        """Returns density value in lb/ft3"""
+        return (P*M)/(Z*10.731577089016*T)
 
     @staticmethod
     def get_comp(Pr,Tr,Z,Zprime):

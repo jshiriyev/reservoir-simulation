@@ -2,7 +2,7 @@ import numpy
 
 from scipy.special import erfc
 
-class OnePhase():
+class OnePhaseLinear():
 
     def __init__(self,length:float,k:float,phi:float,mu:float,ct:float):
         """
@@ -282,7 +282,7 @@ class BuckleyLeverett():
 
         self.x_Sw = v*t*self.fw_der_IC
 
-class MiscibleDisplacement():
+class MiscDispment():
 
     def obj(XX,v,L):
 

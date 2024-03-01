@@ -14,7 +14,7 @@ from scipy.special import yvp as BYVp
 
 from scipy.optimize import root_scalar
 
-class Steady():
+class RadialSteady():
 
     def incompressible(self,rvals,rwell,permeability,height,viscosity):
         """This is a constant flow rate solution of
@@ -39,7 +39,7 @@ class Steady():
 
         pass
 
-class Transient():
+class RadialTransient():
 
     # Line source solution based on exponential integral
 
@@ -129,7 +129,7 @@ class Transient():
 
         self.pressure = self.pressure0-self.deltap
 
-class PseudoSteady():
+class RadialPseudoSteady():
 
     gamma = 1.781
 
@@ -221,7 +221,7 @@ class PseudoSteady():
 
         self.pressure = self.pressure0-self.deltap
 
-class Everdingen():
+class RadialEverdingen():
     """The solution based on the paper published by Everdingen et al."""
 
     def __init__(self,rr,tt,RR,num_of_terms=2):
