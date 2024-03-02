@@ -1,4 +1,4 @@
-class OilPhase():
+class Oil():
 
     """
     12. properties of crude oil systems

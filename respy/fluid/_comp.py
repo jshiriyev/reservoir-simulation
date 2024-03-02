@@ -1,4 +1,18 @@
 class composition():
+    """
+    Gas can be defined based on specific gravity or molecular composition.
+    
+    Second option, molecular composition can be defined in dictionary (**kwargs) and it may contain:
+
+        component       : abbreviation of component ('CH4','C2H6','H2S',etc.)
+        mfracts         : mole fraction of each component
+        mweight         : molecular weight of each component
+        Tcritical       : critical temperature for each component
+        Pcritical       : critical pressure for each component
+        .               :
+        .               :
+        .               :
+    """
 
     def __init__(self,**kwargs):
         """keys are parameters 'str', and values are fields 'float' or 'None'."""
@@ -176,3 +190,14 @@ class composition():
     def items(self):
 
         return iter([(p,f) for p,f in zip(self.params,self.fields)])
+
+    @staticmethod
+    def get_mwa(mfracts,mweight):
+        """Calculates apparent molecular weight."""
+        return sum([fract*weight for fract,weight in zip(mfracts,mweight)])
+
+    @staticmethod
+    def get_spgr_atsc(mwa):
+        """The calculation assumes that the behavior of both the gas mixture and
+        air is described by the ideal gas equation at standard conditions."""
+        return mwa/28.964

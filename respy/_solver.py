@@ -22,6 +22,25 @@ The solver must include:
 - One-Phase Compressible Flow
 - Multi-Phase Flow
 
+ 1. Exercise for single phase compressible flow numerical solution, Balhoff
+ 2. Finalize linear module one-phase flow
+ 3. Two phase flow of water and oil, no capillary pressure
+ 4. Effective implementation of upwinding
+ 5. Finalize Buckley Leverett solution
+ 6. Benchmark numerical solution with Buckley Leverett
+ 7. Finalize Relative Permeability curves
+ 8. Finalize capillary pressure models.
+ 9. Two phase flow of water and oil, with capillary pressure
+10. Finalize two phase flow
+11. Finalize three phase flow
+
+LATER:
+ 
+ 1. Generating the z-factor graph
+ 2. Exercise for single phase compressible flow analytical solution
+ 3. Benchmark numerical solution for compressible flow
+ 4. Finalize the single phase flow of all kinds, all non-linearities in mind
+
 """
 
 class WellCond:
