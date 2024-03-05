@@ -1,6 +1,6 @@
 import numpy
 
-class CornerPoint():
+class CornPoint():
 
 	def __init__(self,grdecl):
 
@@ -346,7 +346,7 @@ class HexaHedron():
 
 		return area
 
-class RecCuboid():
+class Cartesian():
 
 	def __init__(self,xdelta:tuple=None,ydelta:tuple=None,zdelta:tuple=None,dims:tuple=None,num:tuple=None,flodim:int=None):
 		"""Three-dimensional reservoir model can be initialized in two different ways:
@@ -625,72 +625,72 @@ class RecCuboid():
 	@property
 	def xmin(self):
 		"""Properties of grids on x-minimum boundary"""
-		return RecCuboidGrid(self,1,edge=True)
+		return RectCubes(self,1,edge=True)
 
 	@property
 	def xpos(self):
 		"""Properties of grids that has x-positive neighbors"""
-		return RecCuboidGrid(self,2)
+		return RectCubes(self,2)
 
 	@property
 	def xneg(self):
 		"""Properties of grids that has x-negative neighbors"""
-		return RecCuboidGrid(self,1)
+		return RectCubes(self,1)
 
 	@property
 	def xmax(self):
 		"""Properties of grids on x-maximum boundary"""
-		return RecCuboidGrid(self,2,edge=True)
+		return RectCubes(self,2,edge=True)
 
 	@property
 	def ymin(self):
 		"""Properties of grids on y-minimum boundary"""
 		if self.flodim>1:
-			return RecCuboidGrid(self,3,edge=True)
+			return RectCubes(self,3,edge=True)
 
 	@property
 	def ypos(self):
 		"""Properties of grids that has y-positive neighbors"""
 		if self.flodim>1:
-			return RecCuboidGrid(self,4)
+			return RectCubes(self,4)
 
 	@property
 	def yneg(self):
 		"""Properties of grids that has y-negative neighbors"""
 		if self.flodim>1:
-			return RecCuboidGrid(self,3)
+			return RectCubes(self,3)
 
 	@property
 	def ymax(self):
 		"""Properties of grids on y-maximum boundary"""
 		if self.flodim>1:
-			return RecCuboidGrid(self,4,edge=True)
+			return RectCubes(self,4,edge=True)
 
 	@property
 	def zmin(self):
 		"""Properties of grids on z-minimum boundary"""
 		if self.flodim>2:
-			return RecCuboidGrid(self,5,edge=True)
+			return RectCubes(self,5,edge=True)
 
 	@property
 	def zpos(self):
 		"""Properties of grids that has z-positive neighbors"""
 		if self.flodim>2:
-			return RecCuboidGrid(self,6)
+			return RectCubes(self,6)
 
 	@property
 	def zneg(self):
 		"""Properties of grids that has z-negative neighbors"""
 		if self.flodim>2:
-			return RecCuboidGrid(self,5)
+			return RectCubes(self,5)
 
 	@property
 	def zmax(self):
 		"""Properties of grids on z-maximum boundary"""
 		if self.flodim>2:
-			return RecCuboidGrid(self,6,edge=True)
+			return RectCubes(self,6,edge=True)
 
-class RecCuboidGrid(numpy.ndarray):
+class RectCubes(numpy.ndarray):
 
 	def __new__(cls,grid,path,edge=False):
 		"""
@@ -760,14 +760,14 @@ if __name__ == "__main__":
 
 	# print(cells.volume)
 
-	# grids = RecCuboid((4,1,1))
+	# grids = Cartesian((4,1,1))
 
 	# print(grids.gplat)
 	# print(grids.area)
 	# print(grids.zaxis)
 	# print(grids.volume)
 
-	grid = RecCuboid((750,1000,1250),(750,1000,1250),(20,))
+	grid = Cartesian((750,1000,1250),(750,1000,1250),(20,))
 
 	# print(grid.size)
 
