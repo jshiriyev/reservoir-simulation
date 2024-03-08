@@ -4,7 +4,7 @@ class Fluid():
     given pressure and temperature.
     """
 
-    def __init__(self,visc=None,rho=None,comp=None,fvf=None)
+    def __init__(self,visc=None,rho=None,comp=None,fvf=None):
         
         self._visc  = visc*0.001
         self._rho   = rho*16.0185

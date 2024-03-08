@@ -4,7 +4,7 @@ class ResInit():
 
 	patm = 14.7
 
-	def __init__(self,DWOC,DGOC,gradw=0.433,grado=0.346,gradg=0.043,peow=0,peog=0):
+	def __init__(self,DWOC=None,DGOC=None,gradw=0.433,grado=0.346,gradg=0.043,peow=0,peog=0):
 		"""
 		DWOC 	: Depth of Water-Oil-Contact
 		DGOC 	: Depth of Gas-Oil-Contact
