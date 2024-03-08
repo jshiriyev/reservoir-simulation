@@ -24,16 +24,12 @@ class ResRock():
 
         self.fluids = fluids
 
-        self._rcomp = Prop(rcomp,0.000145038).set()
+        self.__rcomp = Prop(rcomp,0.000145038)
 
         self.wconds = () if wconds is None else wconds
         self.bconds = () if bconds is None else bconds
 
         self.resinit = ResInit(**kwargs)
-
-    def rcomp(self,P):
-
-    	return self._rcomp.get(P)
 
     def set_static(self):
         """Self assigns static transmissibility values."""
@@ -119,7 +115,7 @@ class ResRock():
 
     	cg0 = Sg0*self.fluid['gas']._comp
 
-    	ct0 = cform+cw0+co0+cg0
+    	ct0 = self.get_rcomp(None)+cw0+co0+cg0
 
     def __call__(self,press=None,temp=None):
 
@@ -138,6 +134,9 @@ class ResRock():
             mats[key] = Matrix(T,V,G,J,Q)
 
         return mats
+
+    def get_rcomp(self,P):
+        return self.__rcomp(P)
 
     def get_Tmatrix(self,phase):
         """
@@ -270,11 +269,11 @@ class ResRock():
         return (2*perm1*perm2)/(perm1+perm2)
 
     @property
-    def smatrix(self):
+    def shape(self):
         """Shape of the matrices of transmissibility calculations"""
         return (self.grid.numtot,self.grid.numtot)
 
     @property
-    def svector(self):
+    def size(self):
         """Shape of the vectors of transmissibility calculations"""
-        return (self.grid.numtot,1)
+        return self.grid.numtot

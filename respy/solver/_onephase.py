@@ -22,9 +22,13 @@ class OnePhase(ResRock):
 
         """
 
-        super().__init__(grid,fluid,wconds,bconds)
+        super().__init__(grid,(fluid,),wconds,bconds)
 
         self._theta = theta
+
+    @property
+    def theta(self):
+        return self._theta
 
     def set_time(self,tstep:float,total:float=None,nstep:int=1):
         """
@@ -45,37 +49,67 @@ class OnePhase(ResRock):
         self._time = numpy.arange(
             self._tstep,self._ttime+self._tstep/2,self._tstep)
 
-    def initialize(self,dref,pref,ctotal):
+    @property
+    def tstep(self):
+        return self._tstep/(24*60*60)
+
+    @property
+    def ttime(self):
+        return self._ttime/(24*60*60)
+
+    @property
+    def nstep(self):
+        return self._nstep
+    
+    @property
+    def time(self):
+        return self._time/(24*60*60)
+
+    def init(self,dref,pref,tcomp):
         """Initializing the reservoir pressure
         
         dref    : reference depth in feet
         pref    : reference pressure in psi
 
-        ctotal  : total compressibility 1/psi
+        tcomp  : total compressibility 1/psi
         """
 
         self._pinit = self.pzero(
             dref*0.3048,pref*6894.76,self.grid._depth,self.fluid._density)
 
-        self._ctotal = ctotal/6894.76
+        self._tcomp = tcomp/6894.76
+
+    @property
+    def pinit(self):
+        return self._pinit/6894.76
+
+    @property
+    def tcomp(self):
+        return self._tcomp*6894.76
+
+    def __call__(self,P):
+
+        fluid, = self.fluids
+
+        phase = fluid(P,None)
+
+        T = self.get_Tmatrix(phase)
+        S = self.get_Smatrix()
+        G = self.get_Gvector(phase)
+        J = self.get_Jmatrix(phase)
+        Q = self.get_Qvector(phase)
+
+        return Matrix(T,V,G,J,Q,self.tcomp,self.tstep)
 
     def solve(self):
 
         P = self._pinit
 
-        self.update()
-
-        T = self._Tmatrix
-        J = self._Jmatrix
-        A = self._Amatrix
-        Q = self._Qvector
-        G = self._Gvector
-
-        Act = A*(self._ctotal/self._tstep)
-
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
         
         for k in range(self.nstep):
+
+            mat = self(P,self.tstep)
 
             if self.theta==0:
                 P = self.implicit(P,T,J,Act,Q,G)
@@ -90,24 +124,9 @@ class OnePhase(ResRock):
 
             P = P.reshape((-1,1))
 
-    @staticmethod
-    def implicit(P,T,J,Act,Q,G):
-        """Implicit solution of one-phase flow."""
-        return linalg.spsolve(T+J+Act,csr.dot(Act,P)+Q+G)
-
-    @staticmethod
-    def mixed(P,T,J,Act,Q,G,theta):
-        """Mixed solution of one-phase flow."""
-
-        LHS = (1-theta)(T+J)+Act
-        RHS = csr.dot(Act-theta*(T+J),P)+Q+G
-
-        return linalg.spsolve(LHS,RHS)
-
-    @staticmethod
-    def explicit(P,T,J,Act,Q,G):
-        """Explicit solution of one-phase flow."""
-        return P+linalg.spsolve(Act,csr.dot(-(T+J),P)+Q+G)
+    @property
+    def pressure(self):
+        return self._pressure/6894.76
 
     def postprocess(self):
 
@@ -128,35 +147,3 @@ class OnePhase(ResRock):
         density : fluid density in kg/m3
         """
         return pref+density*OnePhase._gravity*(depths-dref)
-        
-    @property
-    def theta(self):
-        return self._theta
-
-    @property
-    def pinit(self):
-        return self._pinit/6894.76
-
-    @property
-    def ctotal(self):
-        return self._ctotal*6894.76
-
-    @property
-    def tstep(self):
-        return self._tstep/(24*60*60)
-
-    @property
-    def ttime(self):
-        return self._ttime/(24*60*60)
-
-    @property
-    def nstep(self):
-        return self._nstep
-    
-    @property
-    def time(self):
-        return self._time/(24*60*60)
-
-    @property
-    def pressure(self):
-        return self._pressure/6894.76

@@ -5,6 +5,12 @@ class Fluid():
     """
 
     def __init__(self,visc=None,rho=None,comp=None,fvf=None):
+        """
+        visc    : viscosity of fluid, cp
+        rho     : density of fluid, lb/ft3
+        comp    : compressibility of fluid, 1/psi
+        fvf     : formation volume factor, ft3/scf
+        """
         
         self._visc  = visc*0.001
         self._rho   = rho*16.0185
@@ -13,7 +19,7 @@ class Fluid():
 
     def __call__(self,*args,**kwargs):
 
-        return (self._visc,self._rho,self._comp,self._fvf)
+        return self
 
     @property
     def visc(self):
@@ -33,6 +39,14 @@ class Fluid():
     @property
     def fvf(self):
         return self._fvf
+
+if __name__ == "__main__":
+
+    f = Fluid(5,5,5,5)
+
+    print(f)
+
+    print(f(45,47))
         
 
 

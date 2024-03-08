@@ -114,3 +114,22 @@ class Matrix():
     def size(self):
         """Shape of the vectors of transmissibility calculations"""
         return self.T.size
+
+    @staticmethod
+    def implicit(m,P):
+        """Implicit solution of one-phase flow."""
+        return linalg.spsolve(m.T+m.J+m.A,csr.dot(m.A,P)+m.Q+m.G)
+
+    @staticmethod
+    def mixed(m,P,theta):
+        """Mixed solution of one-phase flow."""
+
+        LHS = (1-theta)(m.T+m.J)+m.A
+        RHS = csr.dot(m.A-theta*(m.T+m.J),P)+m.Q+m.G
+
+        return linalg.spsolve(LHS,RHS)
+
+    @staticmethod
+    def explicit(m,P):
+        """Explicit solution of one-phase flow."""
+        return P+linalg.spsolve(m.A,csr.dot(-(m.T+m.J),P)+m.Q+m.G)

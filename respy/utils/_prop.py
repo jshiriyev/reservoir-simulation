@@ -1,22 +1,49 @@
-from inspect import isfunction
-
 class Prop():
 
 	def __init__(self,data=None,conv=1):
 
-		self.conv = conv
 		self.data = data
+		self.conv = conv
 
-	def set(self,*args,**kwargs):
+	@property
+	def const(self):
 
-		if isfunction(self.data):
-			return self.data(*args,**kwargs)*self.conv
+		if self.data is None:
+			return
+		
+		if callable(self.data):
+			return False
+
+		return True
+
+	def __call__(self,*args,**kwargs):
+
+		try:
+			multp = kwargs.pop("multp")
+		except KeyError:
+			multp = None
+
+		if callable(self.data):
+			data = self.data(*args,**kwargs)
+		else:
+			data = self.data
+
+		if multp is None:
+			return self.data
+		
+		if multp is False:
+			return self.data/self.conv
 
 		return self.data*self.conv
 
-	def get(self,*args,**kwargs):
+if __name__ == "__main__":
 
-		if isfunction(self.data):
-			return self.data(*args,**kwargs)/self.conv
+	x = Prop(1)
 
-		return self.data/self.conv
+	# print(x.__value)
+
+	# print(x.get())
+	print(x(23))
+
+	# for d in dir(Prop(5,2)):
+	# 	print(d)

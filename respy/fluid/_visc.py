@@ -1,6 +1,9 @@
+from inspect import isfunction
+
 import numpy
 
-class Carr_Kobayashi_Burrows():
+class CKB():
+    """Carr Kobayashi Burrows Method"""
 
     a0  = -2.46211820
     a1  =  2.970547414
@@ -21,6 +24,9 @@ class Carr_Kobayashi_Burrows():
 
     def __init__(self,spgr,temp,N2=0,CO2=0,H2S=0):
 
+        self._spgr = spgr
+        self._temp = temp
+
         mu0 = self.uncorrected(spgr,temp)
         muN = self.N2corr(spgr,N2)
         muC = self.CO2corr(spgr,CO2)
@@ -29,6 +35,14 @@ class Carr_Kobayashi_Burrows():
         mu1 = self.corrected(mu0,muN,muC,muS)
 
         self.mu1 = mu1
+
+    @property
+    def spgr(self):
+        return self._spgr
+
+    @property
+    def temp(self):
+        return self._temp
 
     def __call__(self,pred,tred):
 
@@ -89,12 +103,60 @@ class Carr_Kobayashi_Burrows():
         """Visocsity correction due to the presence of H2S"""
         return mfract*(8.49e-3*numpy.log(spgr)+3.73e-3)
 
-def Lee_Gonzalez_Eakin(P,T,Z,M):
-    """Returns Gas Viscosity in cp"""
-    A = (9.379+0.01607*M)*T**1.5/(209.2+19.26*M+T)
-    B = 3.448+986.4/T+0.01009*M
-    C = 2.447-0.2224*B
+class LGE():
+    """Lee Gonzalez Eakin Method"""
+    def __init__(self,G,T):
 
-    rho = (P*M)/(Z*10.731577089016*T)
+        self._G = G
+        self._T = T*(5./9)
+
+        self.A = self.get_A()
+        self.B = self.get_B()
+        self.C = self.get_C()
+
+    @property
+    def G(self):
+        return self._G
+
+    @property
+    def M(self):
+        return 28.964*self.G
+
+    @property
+    def _M(self):
+        return 28.964*self._G/1000
+
+    @property
+    def T(self):
+        return self._T*(9./5)
+
+    def get_A(self):
+        return (9.379+0.01607*self.M)*self.T**1.5/(209.2+19.26*self.M+self.T)
+
+    def get_B(self):
+        return 3.448+986.4/self.T+0.01009*self.M
+
+    def get_C(self):
+        return 2.447-0.2224*self.B
     
-    return A*numpy.exp(B*rho**C)/10000
+    def __call__(self,P,Z):
+        """Returns Gas Viscosity in cp"""
+
+        rho = (P*self.M)/(Z*10.731577089016*self.T)
+        
+        return self.A*numpy.exp(self.B*rho**self.C)/10000
+
+if __name__ == "__main__":
+
+    a = LGE(0.8,200)
+
+    print(a._T)
+
+    print(a(500,0.9))
+
+    def L(x):
+        return x**2
+
+    c = 2
+
+    print(callable(c))
