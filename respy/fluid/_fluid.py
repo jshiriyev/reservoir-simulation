@@ -1,15 +1,21 @@
 class Fluid():
     """
-    Base Class that defines fluid properties at the
+    Base Class that defines constant fluid properties at the
     given pressure and temperature.
     """
 
     def __init__(self,visc=None,rho=None,comp=None,fvf=None):
         """
+        Initializes a fluid with certain viscosity, density,
+        compressibility and formation volume factor:
+
         visc    : viscosity of fluid, cp
         rho     : density of fluid, lb/ft3
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
+
+        Returns the same parameters for any *args and **kwargs
+        when called.
         """
         
         self._visc  = visc*0.001

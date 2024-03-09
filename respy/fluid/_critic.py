@@ -1,5 +1,9 @@
 class critic:
-
+	"""
+	Static method collection for critical property calculation based
+	on the specific gravity of the gas.
+	"""
+	
 	@staticmethod
 	def natural(spgr):
 		"""It calculates pseudo-critical temperature and pressure for

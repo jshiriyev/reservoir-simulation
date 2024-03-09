@@ -10,118 +10,144 @@ class Gas():
     hydrogen sulfide, and nitrogen.
     """
 
-    def __init__(self,spgr:float=None,*,crit=None,zfact=1.0,visc=None):
+    def __init__(self,*,spgr:float=None,crit=None,temp=None,zfact=1.0,visc=None):
         """
-        Real gas defined based on specific gravity and critical parameters:
+        Real gas defined based on specific gravity, critical properties,
+            compressibility factor and/or viscosity:
         
         spgr    : specific gravity of the gas at
                   standard conditions.
 
-        crit    : tuple of (pcrit,tcrit)
+        crit    : tuple of (pcrit in psi, tcrit in Rankine)
+
+        temp    : temperature value (Rankine) which will be used to calculate
+                  fluid properties when the class is called.
 
         zfact   : either constant value, or method to calculate z-factor
-                  from pressure and temperature.
+                  from pressure (psi) and temperature (Rankine).
 
-        visc    : either constant value, or method to calculate viscosity
-                  from pressure and temperature.
+        visc    : either constant value (cp), or method to calculate viscosity
+                  from pressure (psi) and temperature (Rankine).
+
+        Returns fluid properties viscosity, density, isothermal compressibility
+            coefficient and formation volume factor when called with pressure inputs.
         """
 
-        self._spgr = spgr
+        self._spgr  = spgr
+        self._molw  = self.get_molw(spgr)/1000 # Molecular Mass, kg/mol
 
-        self._mw = 28.964*self._spgr/1000 # Molecular Mass, kg/mol
+        pcrit,tcrit = (None,None) if crit is None else crit
 
-        crit = (None,None) if crit is None else crit
+        self._pcrit = None if pcrit is None else pcrit*6894.76
+        self._tcrit = None if tcrit is None else tcrit*(5./9)
 
-        pcrit,tcrit = crit
-
-        self._pcrit = pcrit*6894.76
-        self._tcrit = tcrit*5.0/9.0
+        self._temp  = None if temp is None else temp*(5./9)
 
         self.__zfact = Prop(zfact)
-        self.__visc  = Prop(visc,0.001)
+        self.__visc  = Prop(visc)
 
     @property
     def spgr(self):
+        """specific gravity of the gas at standard conditions"""
         return self._spgr
     
     @property
-    def mw(self):
+    def molw(self):
         """Molecular Mass, lb/lbmol"""
-        return self._mw*1000
+        return None if self._molw else self._molw*1000
 
     @property
     def pcrit(self):
         """Critical Pressure in psi"""
-        return self._pcrit/6894.76
+        return None if self._pcrit is None else self._pcrit/6894.76
 
     @property
     def tcrit(self):
         """Critical Temperature in Rankine"""
-        return self._tcrit/(5.0/9.0)
+        return None if self._tcrit is None else self._tcrit*(9./5)
+
+    @property
+    def temp(self):
+        """Class temperature value in Rankine"""
+        return None if self._temp is None else self._temp*(9./5)
+
+    @property
+    def tred(self):
+        """Returns reduced temperature (class property)."""
+        return self.temp/self.tcrit
+
+    @property
+    def zfact(self):
+        return self.__zfact()
+
+    @property
+    def visc(self):
+        return self.__visc()
     
-    def __call__(self,P,T):
+    def __call__(self,press):
         """
-        P   : Pressure, psia
-        T   : Temperature, °R
+        Returns Fluid instance with calculated viscosity, density, isothermal
+            compressibility coefficient, and formation volume factor based on: 
+
+        press   : Pressure values where to calculate gas properties, psi
         """
 
-        Z,Zprime = self.get_zfact(P)
-
-        visc = self.get_visc(P,Z)
-        rho  = self.get_rho(P,Z)
-        comp = self.get_comp(P,Z,Zprime)
-        fvf  = self.get_fvf(P,Z)
+        z,zp = self.get_zfact(press)
+        visc = self.get_visc(press,z)
+        rho  = self.get_rho(press,z)
+        comp = self.get_comp(press,z,zp)
+        fvf  = self.get_fvf(press,z)
 
         return Fluid(visc,rho,comp,fvf)
 
-    def pred(self,P):
-        return P/self.pcrit
+    def pred(self,press):
+        """Returns reduced pressure values for input pressure values in psi."""
+        return press/self.pcrit
 
-    def tred(self,T):
-        return T/self.tcrit
-
-    def get_zfact(self,P):
-
-        # Pr = self.pred(P)
-        # Tr = self.tred(T)
-        
-        # return self._zfact(Pr,Tr,derivative=True)
+    def get_zfact(self,press):
+        """Returns z-factor and (dz/dp) for given pressure values. If z is
+        constant, then it return z value and 0 for (dz/dp)."""
 
         if self.__zfact.const:
-            zprime = 0
+            return self.__zfact(press),0
 
-        return self.__zfact(P),zprime
+        return self.__zfact(press)
 
-    def get_visc(self,P,Z=1,**kwargs):
+    def get_visc(self,press,zfact):
         """Calculates pressure and temperature dependent viscosity in cp"""
-        # return self.__visc(P)
-        return self.__visc(P)
+        return self.__visc(press,zfact)
 
-    def get_rho(self,P,T,Z):
+    def get_rho(self,press,zfact):
         """Returns density value in lb/ft3"""
-        return (P*self.mw)/(Z*10.731577089016*T)
+        return (press*self.molw)/(zfact*10.731577089016*self.temp)
 
-    def get_spvol(self,P,T,Z):
+    def get_spvol(self,press,zfact):
         """Returns specific volume in ft3/lb"""
-        return (Z*10.731577089016*T)/(P*self.mw)
+        return (zfact*10.731577089016*self.temp)/(press*self.molw)
 
-    def get_comp(self,P,T,Z,Zprime):
-        """Returns cpr=cg*Pc. This method should not be used
-        at Tr<1.4 for 0.4<Pr<3.0."""
+    def get_comp(self,press,zfact,zprime):
+        """Returns isothermal compressibility coefficient."""
+
         if zprime==0:
-            return 1/P
+            return 1/press
 
-        Pr,Tr = self.pred(P),self.tred(T)
+        return 1/(1+(0.27*self.pred(press))/(zfact**2*self.tred)*zprime)/press
 
-        return 1/(1+(0.27*Pr)/(Z**2*Tr)*Zprime)/P
+    def get_fvf(self,press,zfact):
+        """Returns Gas Formation Volume Factor in ft3/scf"""
+        return 0.02827*zfact*self.temp/press
 
-    def get_fvf(self,P,T,Z):
-        """Function to Calculate Gas Formation Volume Factor in ft3/scf"""
-        return 0.02827*Z*T/P
-
-    def get_fef(self,P,T,Z):
+    def get_fef(self,press,zfact):
         """Returns gas expansion factor."""
-        return P/(0.02827*Z*T)
+        return press/(0.02827*zfact*self.temp)
+
+    @staticmethod
+    def get_molw(spgr):
+        return None if spgr is None else spgr*28.964
+
+    @staticmethod
+    def get_spgr(molw):
+        return None if molw is None else molw/28.964
 
 if __name__ == "__main__":
 

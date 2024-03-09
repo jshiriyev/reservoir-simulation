@@ -1,12 +1,17 @@
 class Prop():
+	"""
+	This class helps to treat constant values as
+	function of *args and **kwargs while returning
+	their constant value only.
+	"""
 
-	def __init__(self,data=None,conv=1):
+	def __init__(self,data=None):
 
 		self.data = data
-		self.conv = conv
 
 	@property
-	def const(self):
+	def isconst(self):
+		"""Checks whether data is callable or not."""
 
 		if self.data is None:
 			return
@@ -18,32 +23,23 @@ class Prop():
 
 	def __call__(self,*args,**kwargs):
 
-		try:
-			multp = kwargs.pop("multp")
-		except KeyError:
-			multp = None
-
 		if callable(self.data):
-			data = self.data(*args,**kwargs)
-		else:
-			data = self.data
-
-		if multp is None:
-			return self.data
+			return self.data(*args,**kwargs)
 		
-		if multp is False:
-			return self.data/self.conv
-
-		return self.data*self.conv
+		return self.data
 
 if __name__ == "__main__":
 
+	t = lambda v: v**2
+
 	x = Prop(1)
+	y = Prop(t)
+	z = Prop(None)
 
-	# print(x.__value)
+	print(x(4))
+	print(y(4))
+	print(z(5))
 
-	# print(x.get())
-	print(x(23))
-
-	# for d in dir(Prop(5,2)):
-	# 	print(d)
+	print(x.isconst)
+	print(y.isconst)
+	print(z.isconst)

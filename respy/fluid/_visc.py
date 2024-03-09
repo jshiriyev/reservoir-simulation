@@ -3,51 +3,78 @@ from inspect import isfunction
 import numpy
 
 class CKB():
-    """Carr Kobayashi Burrows Method"""
+    """Carr-Kobayashi-Burrows Correlation Method"""
 
-    a0  = -2.46211820
-    a1  =  2.970547414
-    a2  = -2.86264054e-1
-    a3  =  8.05420522e-3
-    a4  =  2.80860949
-    a5  = -3.49803305
-    a6  =  3.60373020e-1
-    a7  = -1.044324e-2
-    a8  = -7.93385648e-1
-    a9  =  1.39643306
-    a10 = -1.49144925e-1
-    a11 =  4.41015512e-3
-    a12 =  8.39387178e-2
-    a13 = -1.86408848e-1
-    a14 =  2.03367881e-2
-    a15 = -6.09579263e-4
+    b0 = -2.46211820,2.970547414,-2.86264054e-1,8.05420522e-3
+    b1 =  2.80860949,-3.49803305, 3.60373020e-1,-1.044324e-2
+    b2 = -7.93385648e-1,1.39643306,-1.49144925e-1,4.41015512e-3
+    b3 =  8.39387178e-2,-1.86408848e-1,2.03367881e-2,-6.09579263e-4
 
-    def __init__(self,spgr,temp,N2=0,CO2=0,H2S=0):
+    def __init__(self,spgr,crit,temp,yN2=0,yCO2=0,yH2S=0):
+        """Viscosity class that can be used for ResPy, returning viscosities
+            for pressures when called. Initialization parameters are:
+        
+        spgr    : specific gravity of the gas at standard conditions.
+
+        crit    : tuple of (pcrit in psi, tcrit in Rankine)
+
+        temp    : temperature value (Rankine) which will be used to calculate
+                  viscosities when the class is called.
+
+        yN2     : mole fraction of nitrogen (N2).
+        yCO2    : mole fraction of carbon dioxide (CO2).
+        yH2S    : mole fraction of hydrogen sulfide (H2S)
+        """
 
         self._spgr = spgr
-        self._temp = temp
+
+        pcrit,tcrit = crit
+
+        self._pcrit = pcrit*6894.76
+        self._tcrit = tcrit*(5./9)
+
+        self._temp = temp*(5./9)
 
         mu0 = self.uncorrected(spgr,temp)
-        muN = self.N2corr(spgr,N2)
-        muC = self.CO2corr(spgr,CO2)
-        muS = self.H2Scorr(spgr,H2S)
 
-        mu1 = self.corrected(mu0,muN,muC,muS)
+        muN = self.N2corr(spgr,yN2)
+        muC = self.CO2corr(spgr,yCO2)
+        muS = self.H2Scorr(spgr,yH2S)
 
-        self.mu1 = mu1
+        self.mu1 = self.corrected(mu0,muN,muC,muS)
 
     @property
     def spgr(self):
         return self._spgr
 
     @property
+    def pcrit(self):
+        """Critical Pressure in psi"""
+        return self._pcrit/6894.76
+
+    @property
+    def tcrit(self):
+        """Critical Temperature in Rankine"""
+        return self._tcrit*(9./5)
+
+    @property
     def temp(self):
-        return self._temp
+        return self._temp*(9./5)
 
-    def __call__(self,pred,tred):
+    @property
+    def tred(self):
+        """Returns reduced temperature (class property)."""
+        return self.temp/self.tcrit
 
-        return self.mu1*self.ratio(pred,tred)
+    def __call__(self,press,*args,**kwarg):
 
+        return self.mu1*self.ratio(self.pred(press),self.tred)
+
+    def pred(self,press):
+        """Returns reduced pressure values for input pressure values in psi."""
+        return press/self.pcrit
+
+    @staticmethod
     def ratio(self,pred,tred):
         """Dempsey (1965) viscosity ratio, mu/mu1
         
@@ -55,22 +82,17 @@ class CKB():
         tred    : reduced temperature
         """
 
-        b0 = self.a0,  self.a1,  self.a2,  self.a3
-        b1 = self.a4,  self.a5,  self.a6,  self.a7
-        b2 = self.a8,  self.a9,  self.a10, self.a11
-        b3 = self.a12, self.a13, self.a14, self.a15
+        A0 = CKB.polynomial(*CKB.b0,pred)
+        A1 = CKB.polynomial(*CKB.b1,pred)
+        A2 = CKB.polynomial(*CKB.b2,pred)
+        A3 = CKB.polynomial(*CKB.b3,pred)
 
-        A0 = self._polynomial(*b0,pred)
-        A1 = self._polynomial(*b1,pred)
-        A2 = self._polynomial(*b2,pred)
-        A3 = self._polynomial(*b3,pred)
-
-        poly = self._polynomial(A0,A1,A2,A3,tred)
+        poly = CKB.polynomial(A0,A1,A2,A3,tred)
 
         return numpy.exp(poly)/tred
 
     @staticmethod
-    def _polynomial(c0,c1,c2,c3,x):
+    def polynomial(c0,c1,c2,c3,x):
         return c0+c1*x+c2*x**2+c3*x**3
 
     @staticmethod
@@ -80,71 +102,92 @@ class CKB():
         return mu0+dmuN2+dmuCO2+dmuH2S
 
     @staticmethod
-    def uncorrected(spgr,T):
+    def uncorrected(spgr,temp):
         """Uncorrected gas viscosity, cp
 
-        T   : Temperature in Fahrenheits
+        temp   : Temperature in Fahrenheits
         """
         return 8.188e-3-6.15e-3*numpy.log(spgr)\
-            +(1.709e-5-2.062e-6*spgr)*T
+            +(1.709e-5-2.062e-6*spgr)*temp
 
     @staticmethod
-    def N2corr(spgr,mfract):
-        """Visocsity correction due to the presence of N2"""
-        return mfract*(8.48e-3*numpy.log(spgr)+9.59e-3)
+    def N2corr(spgr,y):
+        """Visocsity correction due to the presence of N2:
+        y : mole fraction of N2 in the gas."""
+        return y*(8.48e-3*numpy.log(spgr)+9.59e-3)
 
     @staticmethod
-    def CO2corr(spgr,mfract):
-        """Visocsity correction due to the presence of CO2"""
-        return mfract*(9.08e-3*numpy.log(spgr)+6.24e-3)
+    def CO2corr(spgr,y):
+        """Visocsity correction due to the presence of CO2:
+        y : mole fraction of CO2 in the gas"""
+        return y*(9.08e-3*numpy.log(spgr)+6.24e-3)
 
     @staticmethod
-    def H2Scorr(spgr,mfract):
-        """Visocsity correction due to the presence of H2S"""
-        return mfract*(8.49e-3*numpy.log(spgr)+3.73e-3)
+    def H2Scorr(spgr,y):
+        """Visocsity correction due to the presence of H2S:
+        y : mole fraction of H2S in the gas."""
+        return y*(8.49e-3*numpy.log(spgr)+3.73e-3)
 
 class LGE():
-    """Lee Gonzalez Eakin Method"""
-    def __init__(self,G,T):
+    """Lee-Gonzalez-Eakin Method"""
+    def __init__(self,spgr,temp):
+        """Viscosity class that can be used for ResPy, returning viscosities
+            for pressures when called. Initialization parameters are:
+        
+        spgr    : specific gravity of the gas at standard conditions.
 
-        self._G = G
-        self._T = T*(5./9)
+        temp    : temperature value (Rankine) which will be used to calculate
+                  viscosities when the class is called.
+        """
+
+        self._spgr = spgr
+        self._molw = self.get_molw(spgr)/1000 # Molecular Mass, kg/mol
+
+        self._temp = temp*(5./9)
 
         self.A = self.get_A()
         self.B = self.get_B()
         self.C = self.get_C()
 
     @property
-    def G(self):
-        return self._G
+    def spgr(self):
+        """specific gravity of the gas at standard conditions"""
+        return self._spgr
+    
+    @property
+    def molw(self):
+        """Molecular Mass, lb/lbmol"""
+        return self._molw*1000
 
     @property
-    def M(self):
-        return 28.964*self.G
-
-    @property
-    def _M(self):
-        return 28.964*self._G/1000
-
-    @property
-    def T(self):
-        return self._T*(9./5)
+    def temp(self):
+        return self._temp*(9./5)
 
     def get_A(self):
-        return (9.379+0.01607*self.M)*self.T**1.5/(209.2+19.26*self.M+self.T)
+        upper = (9.379+0.01607*self.molw)*self.temp**1.5
+        lower = (209.2+19.26*self.molw+self.temp)
+        return upper/lower
 
     def get_B(self):
-        return 3.448+986.4/self.T+0.01009*self.M
+        return 3.448+986.4/self.temp+0.01009*self.molw
 
     def get_C(self):
         return 2.447-0.2224*self.B
     
-    def __call__(self,P,Z):
+    def __call__(self,press,zfact,*args,**kwarg):
         """Returns Gas Viscosity in cp"""
 
-        rho = (P*self.M)/(Z*10.731577089016*self.T)
+        rho = (press*self.molw)/(zfact*10.731577089016*self.temp)
         
         return self.A*numpy.exp(self.B*rho**self.C)/10000
+
+    @staticmethod
+    def get_molw(spgr):
+        return spgr*28.964
+
+    @staticmethod
+    def get_spgr(molw):
+        return molw/28.964
 
 if __name__ == "__main__":
 
