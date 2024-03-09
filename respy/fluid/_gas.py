@@ -10,7 +10,7 @@ class Gas():
     hydrogen sulfide, and nitrogen.
     """
 
-    def __init__(self,*,spgr:float=None,crit=None,temp=None,zfact=1.0,visc=None):
+    def __init__(self,*,spgr:float=None,crit=None,temp=None,zfact=None,visc=None):
         """
         Real gas defined based on specific gravity, critical properties,
             compressibility factor and/or viscosity:
@@ -109,7 +109,7 @@ class Gas():
         constant, then it return z value and 0 for (dz/dp)."""
 
         if self.__zfact.const:
-            return self.__zfact(press),0
+            return self.__zfact(),Prop(0)
 
         return self.__zfact(press)
 
@@ -128,8 +128,10 @@ class Gas():
     def get_comp(self,press,zfact,zprime):
         """Returns isothermal compressibility coefficient."""
 
-        if zprime==0:
-            return 1/press
+        if isinstance(zprime,Prop):
+            if zprime()==0:
+                return 1/press
+            zprime = zprime()
 
         return 1/(1+(0.27*self.pred(press))/(zfact**2*self.tred)*zprime)/press
 

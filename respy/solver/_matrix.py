@@ -2,18 +2,17 @@ from scipy.sparse import diags
 
 class Matrix():
 
-    def __init__(self,T,S,G,J,Q,tcomp=None,tstep=None):
+    def __init__(self,T,S,G,J,Q,t=None,c=None):
         """Inputs should be in SI units.
 
-        T  		: Transmissibility Matrix
-        S 		: Storage Matrix
-        G 		: Gravity Vector
-        J 		: Constant Pressure Matrix
-        Q 		: Constant Flow Rate Vector
-		
-		tcomp 	: total compressibility, 1/Pa
-		tstep 	: time step in the numerical calculations, sec
-
+        T   : Transmissibility Matrix in SI units, (m**3)/(Pa*sec)
+        S   : Storage Matrix in SI units, (m**3)
+        G   : Gravity Vector in SI units, (m**3)/(sec)
+        J   : Constant Pressure Matrix in SI units, (m**3)/(Pa*sec)
+        Q   : Constant Flow Rate Vector in SI units, (m**3)/(sec)
+        
+        t   : time step in the numerical calculations, sec
+        c   : total compressibility in SI units, 1/Pa
         """
 
         self._T = T
@@ -22,18 +21,26 @@ class Matrix():
         self._J = J
         self._Q = Q
 
-        tcomp = numpy.asarray(tcomp).flatten()
+        if t is not None:
+            self._A = self.get_A(self._S,t)
 
-        if tcomp.size == 1:
-        	tcomp = tcomp.repeat(self._T.shape[0])
+        if c is not None:
+            self._B = self.get_B(self._A,c)
 
-        self._tcomp = diags(tcomp)
-        self._tstep = tstep
+    @staticmethod
+    def get_A(S,t):
+        """Returns (pore_volume)/(time_step)."""
+        return S/t
+
+    @staticmethod
+    def get_B(A,c):
+        """Returns A.dot(c) in sparse matrix form."""
+        return A.dot(c)
 
     @property
     def T(self):
         """Converting from SI Units to Oil Field Units."""
-        return self._T*(3.28084**3*(24*60*60)*6894.76)
+        return self._T*(3.28084**3)*(24*60*60)*6894.76
     
     @property
     def S(self):
@@ -41,59 +48,37 @@ class Matrix():
         return self._S*(3.28084**3)
 
     @property
-    def tcomp(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._tcomp/6894.76
-
-    @property
-    def tstep(self):
-        """Converting from SI Units to Oil Field Units."""
-        return self._tstep/(24*60*60)
-
-    @property
     def A(self):
-        """Returning in Oil Field Units."""
-        return self.S.dot(self.tcomp)/self.tstep
+        """Converting from SI Units to Oil Field Units."""
+        return self._A*(3.28084**3)*(24*60*60)
 
     @property
-    def _A(self):
-        """Returning in SI Units."""
-        return self._S.dot(self._tcomp)/self._tstep
-
+    def B(self):
+        return self._B*(3.28084**3)*(24*60*60)*6894.76
+    
     @property
     def G(self):
         """Converting from SI Units to Oil Field Units."""
-        return self._G*(3.28084**3*(24*60*60))
+        return self._G*(3.28084**3)*(24*60*60)
 
     @property
     def J(self):
         """Converting from SI Units to Oil Field Units."""
-        return self._J*(3.28084**3*(24*60*60)*6894.76)
+        return self._J*(3.28084**3)*(24*60*60)*6894.76
     
     @property
     def Q(self):
         """Converting from SI Units to Oil Field Units."""
-        return self._Q*(3.28084**3*(24*60*60))
+        return self._Q*(3.28084**3)*(24*60*60)
 
-    @property
-    def all(self):
-        return (self.T,self.A,self.G,self.J,self.Q)
+    def __call__(self,*args,**kwargs):
 
-    @property
-    def _all(self):
-        return (self._T,self._A,self._G,self._J,self._Q)
+        return self
 
-    def residual(self,P,Pn):
-        """Returns residual vector for the given n+1 or n-1 values of
-        P and (T,J,A,Q,G), and n values of (P,) in Oil Field Units"""
-        T,A,G,J,Q = self.all
-        return -csr.dot(T+J+Act,P)+csr.dot(Act,Pn)+Q+G
-
-    def _residual(self,P,Pn):
-        """Returns residual vector for the given n+1 or n-1 values of
-        P and (T,J,A,Q,G), and n values of (P,) in SI units"""
-        T,A,G,J,Q = self._all
-        return -csr.dot(T+J+Act,P)+csr.dot(Act,Pn)+Q+G
+    def residual(self,P,Pprev):
+        """Returns residual vector for the given n+1 values of P and (T,J,A,Q,G),
+        and n values of P (Pprev) in SI units, (m**3)/(sec)"""
+        return -csr.dot(self._T+self._J+self._B,P)+csr.dot(self._B,Pprev)+self._Q+self._G
 
     @property
     def pa2psi(self):
@@ -133,3 +118,7 @@ class Matrix():
     def explicit(m,P):
         """Explicit solution of one-phase flow."""
         return P+linalg.spsolve(m.A,csr.dot(-(m.T+m.J),P)+m.Q+m.G)
+
+if __name__ == "__main__":
+
+    pass

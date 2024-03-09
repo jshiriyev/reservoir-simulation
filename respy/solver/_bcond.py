@@ -2,14 +2,14 @@ class BoundCond():
 
     def __init__(self,face,**kwargs):
         """
-        face    : boundary, xmin, xmax, ymin, ymax, zmin, or zmax
+        face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
 
         Assign only one of the following conditions:
 
-        press   : constant pressure values
-        orate   : constant flow boundary condition, 0 = no flow
-        wrate   : constant flow boundary condition, 0 = no flow
-        grate   : constant flow boundary condition, 0 = no flow
+        press   : constant pressure values, psi
+        orate   : constant flow boundary condition, 0 = no flow, bbl/day
+        wrate   : constant flow boundary condition, 0 = no flow, bbl/day
+        grate   : constant flow boundary condition, 0 = no flow, ft3/day
         """
         self._face = face
 
@@ -19,9 +19,9 @@ class BoundCond():
                 if key == "press":
                     self._cond = value*6894.76
                 elif key in ("orate","wrate"):
-                    self._cond = value*1.84013e-6
+                    self._cond = value*(0.3048**3)/(24*60*60)*5.615
                 elif key == "grate":
-                    self._cond = value*3.27741e-7
+                    self._cond = value*(0.3048**3)/(24*60*60)
                 break
 
     @property
@@ -37,6 +37,12 @@ class BoundCond():
         if self._sort == "press":
             return self._cond/6894.76
         elif self._sort in ("orate","wrate"):
-            return self._cond/1.84013e-6
+            return self._cond*(24*60*60)/(0.3048**3)/5.615
         elif self._sort == "grate":
-            return self._cond/3.27741e-7
+            return self._cond*(24*60*60)/(0.3048**3)
+
+if __name__ == "__main__":
+
+    bcond = BoundCond("xmin",press=500)
+
+    print(bcond.cond)

@@ -1,9 +1,9 @@
-class WellCond:
+class WellCond():
     """
     It is a well condition object used in the simulator.
     """
 
-    def __init__(self,block:tuple,axis:str,radius:float,skin:float,start:float,end:float,**kwargs):
+    def __init__(self,radius:float,block:tuple,axis:str="z",skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
         block   : block indices containing the well
         axis    : (z) vertical or (x,y) horizontal well
@@ -12,24 +12,24 @@ class WellCond:
         skin    : skin factor of the well, dimensionless
 
         start   : start time for implementing the condition, days
-        end     : end time for implementing the condition, days
+        stop    : stop time for implementing the condition, days
 
         Assign only one of the following conditions:
 
-        bhp     : constant bottom hole pressure
-        whp     : constant well head pressure
-
+        press   : constant bottom hole pressure, psi
         orate   : constant oil rate
         wrate   : constant water rate
         grate   : constant gas rate
         """
 
-        self._block     = block
-        self._axis      = axis
         self._radius    = radius*0.3048
+        self._block     = block
+
+        self._axis      = axis
         self._skin      = skin
+
         self._start     = start*(24*60*60)
-        self._end       = end*(24*60*60)
+        self._stop      = None if stop is None else stop*(24*60*60)
 
         for key,value in kwargs.items():
             if value is not None:
@@ -37,10 +37,14 @@ class WellCond:
                 if key == "press":
                     self._cond = value*6894.76
                 elif key in ("orate","grate"):
-                    self._cond = value*1.84013e-6
+                    self._cond = value*(0.3048**3)/(24*60*60)*5.615
                 elif key == "grate":
-                    self._cond = value*3.27741e-7
+                    self._cond = value*(0.3048**3)/(24*60*60)
                 break
+    
+    @property
+    def radius(self):
+        return self._radius/0.3048
 
     @property
     def block(self):
@@ -51,10 +55,6 @@ class WellCond:
         return self._axis
 
     @property
-    def radius(self):
-        return self._radius/0.3048
-
-    @property
     def skin(self):
         return self._skin
 
@@ -63,8 +63,8 @@ class WellCond:
         return self._start/(24*60*60)
 
     @property
-    def end(self):
-        return self._end/(24*60*60)
+    def stop(self):
+        return None if self._stop is None else self._stop/(24*60*60)
 
     @property
     def sort(self):
@@ -72,9 +72,17 @@ class WellCond:
     
     @property
     def cond(self):
-        if self._sort in ("bhp","whp"):
+        if self._sort == "press":
             return self._cond/6894.76
         elif self._sort in ("orate","wrate"):
-            return self._cond/1.84013e-6
+            return self._cond*(24*60*60)/(0.3048**3)/5.615
         elif self._sort == "grate":
-            return self._cond/3.27741e-7
+            return self._cond*(24*60*60)/(0.3048**3)
+
+if __name__ == "__main__":
+
+    wcond = WellCond(0.5,(3,),"z",orate=500,start=3)
+
+    print(wcond.sort,wcond.cond)
+
+    print(wcond.start,wcond._start)
