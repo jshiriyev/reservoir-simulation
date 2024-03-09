@@ -13,6 +13,11 @@ class Matrix():
         
         t   : time step in the numerical calculations, sec
         c   : total compressibility in SI units, 1/Pa
+
+        Calculated parameters are:
+
+        A   : (pore_volume)/(time_step) in SI units, (m**3)/(sec)
+        B   : A.dot(c) in SI units, (m**3)/(Pa*sec)
         """
 
         self._T = T
@@ -101,23 +106,32 @@ class Matrix():
         return self.T.size
 
     @staticmethod
-    def implicit(m,P):
-        """Implicit solution of one-phase flow."""
-        return linalg.spsolve(m.T+m.J+m.A,csr.dot(m.A,P)+m.Q+m.G)
+    def implicit(Mnext,Pprev):
+        """Implicit solution: matrices is defined at Pnext, and
+        returned pressure is Pnext."""
 
-    @staticmethod
-    def mixed(m,P,theta):
-        """Mixed solution of one-phase flow."""
-
-        LHS = (1-theta)(m.T+m.J)+m.A
-        RHS = csr.dot(m.A-theta*(m.T+m.J),P)+m.Q+m.G
+        LHS = Mnext._T+Mnext._J+Mnext._B
+        RHS = csr.dot(Mnext._B,Pprev)+Mnext._Q+Mnext._G
 
         return linalg.spsolve(LHS,RHS)
 
     @staticmethod
-    def explicit(m,P):
-        """Explicit solution of one-phase flow."""
-        return P+linalg.spsolve(m.A,csr.dot(-(m.T+m.J),P)+m.Q+m.G)
+    def mixed(Mprev,Mnext,Pprev,Theta=0.5):
+        """Mixed solution: matrices is defined at Pprev and Pnext, and
+        returned pressure is Pnext."""
+
+        LHS = (1-Theta)(Mnext._T+Mnext._J)+Mnext._B
+        RHS = csr.dot(Mprev._B-Theta*(Mprev._T+Mprev._J),Pprev)+Mprev._Q+Mprev._G
+
+        return linalg.spsolve(LHS,RHS)
+
+    @staticmethod
+    def explicit(Mprev,Pprev):
+        """Explicit solution: matrices are defined at Pprev, and
+        returned pressure is Pnext."""
+        LHS = Mprev._B
+        RHS = csr.dot(-(Mprev._T+Mprev._J),Pprev)+Mprev._Q+Mprev._G
+        return Pprev+linalg.spsolve(LHS,RHS)
 
 if __name__ == "__main__":
 
