@@ -1,4 +1,4 @@
-class water():
+class Water():
 
     """
     26. properties of reservoir water

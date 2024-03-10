@@ -1,11 +1,11 @@
-import cappres
-import relperm
-import fluid
+from . import cappres
+from . import relperm
+from . import fluid
 
-import linear
-import radial
-import green
+from . import linear
+from . import radial
+from . import green
 
-import grids
+from . import grids
 
-import solver
+from . import solver
