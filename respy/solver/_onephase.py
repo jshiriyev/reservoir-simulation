@@ -3,6 +3,8 @@ class OnePhase():
     This class solves for single phase reservoir flow in Rectangular Cuboids.
     """
 
+    _gravity = 9.807  # Gravitational acceleration in SI units
+
     def __init__(self,grid,fluid,wconds=None,bconds=None,theta=0):
         """
         grid  : It is a RecCuboid (rectangular cuboid) object.

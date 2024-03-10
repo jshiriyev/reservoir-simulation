@@ -10,7 +10,7 @@ from respy.grids._cvol import ConVolume
 class RecCube(numpy.ndarray):
 	"""It is a numpy.ndarray interface for control volume."""
 
-	def __new__(cls,*args,cvol:ConVolume=None,rows=None):
+	def __new__(cls,*args,cvol:ConVolume=None,rows=None,**kwargs):
 		"""
 		edge 	: edge of the rectnagular cuboids, Nx3 numpy ndarray
 
@@ -27,7 +27,7 @@ class RecCube(numpy.ndarray):
 			raise Warning("RecCube does not accept more than one positional argument")
 		
 		if len(args)==1:
-			cvol = ConVolume(args[0])
+			cvol = ConVolume(args[0],**kwargs)
 		
 		if rows is None:
 			rows = cvol.rows

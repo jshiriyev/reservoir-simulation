@@ -16,11 +16,6 @@ from scipy.sparse import csr_matrix as csr
 # from ._cappres import ScanCurves
 
 """
-The solver must include:
-
-- One-Phase Slightly Compressible Flow
-- One-Phase Compressible Flow
-- Multi-Phase Flow
 
  1. Exercise for single phase compressible flow numerical solution, Balhoff
  2. Finalize linear module one-phase flow

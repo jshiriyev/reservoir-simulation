@@ -3,7 +3,8 @@ import numpy
 class ConVolume():
 	"""Collection of the properties to calculate for the reservoir simulation."""
 
-	def __init__(self,edge:numpy.ndarray,rows=None):
+	def __init__(self,edge:numpy.ndarray,rows=None,**kwargs):
+		"""Any kwargs values should follow the size regulation."""
 
 		self.edge = edge
 
@@ -14,9 +15,25 @@ class ConVolume():
 
 		self.rows = rows
 
+		self.prop = []
+
+		self.set_prop(**kwargs)
+
 	def __getitem__(self,key):
 
-		return ConVolume(self.edge[key],self.rows[key])
+		kwargs = {}
+
+		for item in self.prop:
+			kwargs[item] = getattr(self,item)[key]
+
+		return ConVolume(self.edge[key],self.rows[key],**kwargs)
+
+	def set_prop(self,**kwargs):
+		"""Any kwargs values should follow the size regulation."""
+
+		for key,value in kwargs.items():
+			setattr(self,key,value)
+			self.prop.append(key)
 
 	@property
 	def xedge(self):
@@ -48,10 +65,14 @@ class ConVolume():
 
 if __name__ == "__main__":
 
-	vol = ConVolume(numpy.array([[1,2,3],[1,2,3],[1,2,3],[1,2,3]]))
+	vol = ConVolume(
+		numpy.array([[1,2,3],[1,2,3],[1,2,3],[1,2,3]]),
+		perm=numpy.array((400,500,600,700)))
 
 	print(type(vol[:2]))
 
 	vol1 = vol[:2]
 
 	print(vol1.xarea)
+
+	print(vol1.perm)
