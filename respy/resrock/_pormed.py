@@ -5,9 +5,9 @@ if __name__ == "__main__":
 
 import numpy
 
-from respy.utils._prop import Prop
+from respy.rock._resrock import ResRock
 
-from respy.rock._resinit import ResInit
+from respy.utils._prop import Prop
 
 class PorMed():
 
@@ -19,7 +19,10 @@ class PorMed():
 
         self.grid = grid
 
-        self.resinit = ResInit(**kwargs)
+    @property
+    def size(self):
+        """Number of grids in the reservoir."""
+        return self.grid.cube.shape[0]
 
     def get_property(self,quality,coeff=1.,dtype=None):
         """coeff    : conversion factor"""
@@ -65,47 +68,36 @@ class PorMed():
     def set_comp(self,P):
         return self.__comp(P)
 
-    def init(self,pcow,pcog,pcgw):
+    def __call__(self,press):
 
-        Pw0 = self.resinit.waterpressure(self.grid.cube.depth)
+        poro  = self._poro
+        xperm = self._xperm
+        yperm = self._yperm
+        zperm = self._zperm
+        comp  = self._comp
+        depth = self._depth
 
-        Po0 = self.resinit.oilpressure(self.grid.cube.depth)
-        Pg0 = self.resinit.gaspressure(self.grid.cube.depth)
-
-        Sw0,So0,Sg0 = self.resinit.saturations(pcow,pcog,pcgw)
-
-        cw0 = Sw0*self.fluids['water'].comp
-
-        co0 = So0*self.fluids['oil'].comp
-
-        cg0 = Sg0*self.fluids['gas'].comp
-
-        ct0 = self.get_rcomp(None)+cw0+co0+cg0
+        return ResRock(poro,xperm,yperm,zperm,comp,depth)
 
     @property
-    def size(self):
-        """Number of grids in the reservoir."""
-        return self.grid.cube.shape[0]
-
-    # @property
-    # def depth(self):
-    #     return self._depth/0.3048
+    def depth(self):
+        return self._depth/0.3048
     
-    # @property
-    # def poro(self):
-    #     return self._poro
+    @property
+    def poro(self):
+        return self._poro
 
-    # @property
-    # def xperm(self):
-    #     return self._xperm/9.869233e-16
+    @property
+    def xperm(self):
+        return self._xperm/9.869233e-16
 
-    # @property
-    # def yperm(self):
-    #     return self._yperm/9.869233e-16
+    @property
+    def yperm(self):
+        return self._yperm/9.869233e-16
 
-    # @property
-    # def zperm(self):
-    #     return self._zperm/9.869233e-16
+    @property
+    def zperm(self):
+        return self._zperm/9.869233e-16
 
 if __name__ == "__main__":
 

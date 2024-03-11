@@ -155,17 +155,17 @@ class OnePhase():
         """
 
         self._pinit = self.pzero(
-            dref*0.3048,pref*6894.76,self.grid._depth,self.fluid._density)
+            dref*0.3048,pref*6894.75729,self.grid._depth,self.fluid._density)
 
-        self._tcomp = tcomp/6894.76
+        self._tcomp = tcomp/6894.75729
 
     @property
     def pinit(self):
-        return self._pinit/6894.76
+        return self._pinit/6894.75729
 
     @property
     def tcomp(self):
-        return self._tcomp*6894.76
+        return self._tcomp*6894.75729
 
         def get_Tmatrix(self,phase):
         """
@@ -337,7 +337,7 @@ class OnePhase():
 
     @property
     def pressure(self):
-        return self._pressure/6894.76
+        return self._pressure/6894.75729
 
     def postprocess(self):
 

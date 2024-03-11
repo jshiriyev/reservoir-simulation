@@ -1,4 +1,4 @@
-from respy.fluid import Fluid
+from respy.fluid._fluid import Fluid
 
 from respy.utils._prop import Prop
 

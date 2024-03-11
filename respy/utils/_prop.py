@@ -28,6 +28,21 @@ class Prop():
 		
 		return self.data
 
+	@staticmethod
+	def vectorize(data,size=None,dtype=None):
+
+        data = numpy.asarray(data)
+
+        if dtype is not None:
+            data = data.astype(dtype)
+
+        data = data.flatten()
+
+        if data.size==1:
+            data = data.repeat(size)
+
+        return data.reshape((-1,1))
+
 if __name__ == "__main__":
 
 	t = lambda v: v**2

@@ -18,9 +18,9 @@ class Fluid():
         when called.
         """
         
-        self._visc  = visc*0.001
-        self._rho   = rho*16.0185
-        self._comp  = comp/6894.76
+        self._visc  = None if visc is None else visc*0.001
+        self._rho   = None if rho is None else rho*16.0185
+        self._comp  = None if comp is None else comp/6894.75729
         self._fvf   = fvf
 
     def __call__(self,*args,**kwargs):
@@ -40,7 +40,7 @@ class Fluid():
     @property
     def comp(self):
         if self._comp is not None:
-            return self._comp*6894.76
+            return self._comp*6894.75729
 
     @property
     def fvf(self):
@@ -48,11 +48,13 @@ class Fluid():
 
 if __name__ == "__main__":
 
-    f = Fluid(5,5,5,5)
+    f = Fluid(5,5)
 
     print(f)
 
     print(f(45,47))
+
+    print(f.visc,f._visc)
         
 
 
