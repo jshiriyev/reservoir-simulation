@@ -9,7 +9,7 @@ from respy.grids._delta import GridDelta
 
 class GridRegular(GridDelta):
 
-	def __init__(self,size:tuple,nums:tuple,dims:int=None,**kwargs):
+	def __init__(self,size:tuple,nums:tuple,depth=None,dims:int=None,**kwargs):
 		"""
 		size 	: reservoir dimensions (length x width x height)
 
