@@ -15,7 +15,7 @@ class ConVolume():
 
 		self.rows = rows
 
-		self.prop = []
+		self.prop = set()
 
 		self.set_prop(**kwargs)
 
@@ -33,7 +33,7 @@ class ConVolume():
 
 		for key,value in kwargs.items():
 			setattr(self,key,value)
-			self.prop.append(key)
+			self.prop.add(key)
 
 	@property
 	def xedge(self):

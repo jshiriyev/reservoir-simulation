@@ -9,7 +9,7 @@ from respy.grids._cube import RecCube
 
 class GridDelta():
 
-	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,dims=None,**kwargs):
+	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,dims=None):
 		"""Three-dimensional rectangular cuboid initialized with:
 
 		xdelta	: length of grids in ft, shape = (Nlength,)
@@ -29,9 +29,10 @@ class GridDelta():
 
 		self.dims = self.set_dims(dims)
 
-		self.cube = RecCube(self.edge,**kwargs)
+		self.cube = RecCube(self.edge)
 
 	def set_delta(self,delta):
+
 		return numpy.asarray(delta).flatten().astype(numpy.float_)
 
 	def set_dims(self,dims):

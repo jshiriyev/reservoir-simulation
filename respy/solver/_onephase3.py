@@ -1,6 +1,7 @@
-class OnePhase():
+class OnePhase3():
     """
-    This class solves for single phase reservoir flow in Rectangular Cuboids.
+    This class solves for single phase reservoir flow in Rectangular Cuboids;
+    Dynamic Rock and Fluid Properties.
     """
 
     _gravity = 9.807  # Gravitational acceleration in SI units

@@ -4,7 +4,7 @@ class ResRock():
 	at the given pressure and temperature.
 	"""
 
-	def __init__(self,poro=None,xperm=None,yperm=None,zperm=None,comp=None,depth=None):
+	def __init__(self,poro=None,xperm=None,yperm=None,zperm=None,comp=None):
 		"""
         Initializes a reservoir rock with the following petrophysical parameters:
 
@@ -13,7 +13,6 @@ class ResRock():
         yperm   : permeability in y direction, mD
         zperm   : permeability in z direction, mD
         comp 	: isothermal compressibility factor of rock, 1/psi
-        depth 	: depth of reservoir, ft
 
         Returns the same parameters for any *args and **kwargs
         when called.
@@ -26,8 +25,6 @@ class ResRock():
 		self._zperm = None if zperm is None else zperm*9.869233e-16
 
 		self._comp  = None if comp is None else comp/6894.75729
-
-		self._depth = None if depth is None else depth*0.3048
 
 	def __call__(self,*args,**kwargs):
 
@@ -56,9 +53,4 @@ class ResRock():
 	def comp(self):
 		if self._comp is not None:
 			return self._comp*6894.75729
-
-	@parameter
-	def depth(self):
-		if self._depth is not None:
-			return self._depth/0.3048
 
