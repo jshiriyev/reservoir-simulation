@@ -23,7 +23,7 @@ class Fluid():
         self._comp  = None if comp is None else comp/6894.75729
         self._fvf   = fvf
 
-    def __call__(self,*args,**kwargs):
+    def __call__(self,press):
 
         return self
 

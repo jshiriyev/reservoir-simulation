@@ -1,3 +1,5 @@
+import numpy
+
 class Prop():
 	"""
 	This class helps to treat constant values as
@@ -26,22 +28,21 @@ class Prop():
 		if callable(self.data):
 			return self.data(*args,**kwargs)
 		
-		return self.data
+		return self.reshape(*args,**kwargs)
 
-	@staticmethod
-	def vectorize(data,size=None,dtype=None):
+	def reshape(self,*args,**kwargs):
 
-        data = numpy.asarray(data)
+		data = numpy.asarray(self.data)
 
-        if dtype is not None:
-            data = data.astype(dtype)
+		if data.shape==args[0].shape:
+			return data
 
-        data = data.flatten()
+		data = data.flatten()
 
-        if data.size==1:
-            data = data.repeat(size)
+		if data.size==1:
+			return data*numpy.ones_like(args[0])
 
-        return data.reshape((-1,1))
+		return data.reshape((-1,1))
 
 if __name__ == "__main__":
 
@@ -51,9 +52,9 @@ if __name__ == "__main__":
 	y = Prop(t)
 	z = Prop(None)
 
-	print(x(4))
-	print(y(4))
-	print(z(5))
+	print(x(numpy.array([4])))
+	print(y(numpy.array([4])))
+	print(z(numpy.array([5])))
 
 	print(x.isconst)
 	print(y.isconst)
