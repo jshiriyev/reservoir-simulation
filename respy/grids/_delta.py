@@ -7,9 +7,9 @@ if __name__ == "__main__":
 
 from respy.grids._cube import RecCube
 
-class GridDelta():
+class GridDelta(RecCube):
 
-	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,depth=None,dims=None):
+	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,depth=None,dims=None,**kwargs):
 		"""Three-dimensional rectangular cuboid initialized with:
 
 		xdelta	: length of grids in ft, shape = (Nlength,)
@@ -23,13 +23,19 @@ class GridDelta():
 		The object has properties to calculate the control volume implementation.
 		"""
 
-		self.xdelta = self.set_delta(xdelta)
-		self.ydelta = self.set_delta(ydelta)
-		self.zdelta = self.set_delta(zdelta)
+		object.__setattr__(self,"xdelta",self.set_delta(xdelta))
+		object.__setattr__(self,"ydelta",self.set_delta(ydelta))
+		object.__setattr__(self,"zdelta",self.set_delta(zdelta))
 
-		self.dims = self.set_dims(dims)
+		object.__setattr__(self,"dims",self.set_dims(dims))
 
-		self.cube = RecCube(self.edge)
+		rows = numpy.arange(self.numtot,dtype=numpy.int_)
+
+		object.__setattr__(self,"rows",rows)
+		object.__setattr__(self,"prop",set())
+
+		for key,value in kwargs.items():
+			self.__setattr__(key,value)
 
 	def set_delta(self,delta):
 
@@ -151,14 +157,17 @@ class GridDelta():
 
 if __name__ == "__main__":
 
-	grid = GridDelta((750,1000,125),(750,1000,1250),(20,),
+	grid = GridDelta((750,1000,1250),(750,1000,1250),(20,),
 		perm=numpy.array((1,2,3,4,5,6,7,8,9)).reshape((-1,1)))
 
 	# print(rcube.ymin)
 
 	# print(grid.cube.xarea)
 
+	print(grid.xmin.rows)
 	print(grid.xmin.perm)
+
+	print(grid.xcenter)
 
 	# print(grid.xmin)
 	# print(grid.xmax)

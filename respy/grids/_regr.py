@@ -34,5 +34,5 @@ if __name__ == "__main__":
 
 	grid = GridRegular((1000,2000,30),(3,4,1))
 
-	print(grid.cube)
+	print(grid.xmin.rows)
 

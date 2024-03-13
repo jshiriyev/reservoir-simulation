@@ -1,39 +1,55 @@
 import numpy
 
 class RecCube():
-	"""Collection of the properties to calculate for the reservoir simulation."""
+	"""Reservoir Cuboid class"""
 
-	def __init__(self,edge:numpy.ndarray,rows=None,**kwargs):
-		"""Any kwargs values should follow the size regulation."""
+	def __init__(self,edge:numpy.ndarray,plat:numpy.ndarray,rows:numpy.ndarray=None,**kwargs):
+		"""
+		Reservoir Cuboid class holding cell properties:
+		
+		edge 	: edge size of each grid, (N,3) numpy.ndarray
+		plat 	: neighboring indices, (N,2*dims) numpy.ndarray where dims is 1, 2, or 3
+		rows 	: indices of cells, (N,) flat numpy.ndarray
 
-		self.edge = edge
+		The value of kwargs should be flat array of numpy.ndarray of size N or 1.
+
+		"""
+
+		object.__setattr__(self,"edge",edge)
+		object.__setattr__(self,"plat",plat)
 
 		if rows is None:
 			rows = numpy.arange(
 				self.edge[:,0].size,dtype=numpy.int_
 				)
 
-		self.rows = rows
+		object.__setattr__(self,"rows",rows)
+		object.__setattr__(self,"prop",set())
 
-		self.prop = set()
+		for key,value in kwargs.items():
+			self.__setattr__(key,value)
 
-		self.set_prop(**kwargs)
+	def __setattr__(self,key,value):
+		"""The value should be flat array of numpy.ndarray of size N or 1"""
+
+		object.__setattr__(self,key,value)
+		
+		self.prop.add(key)
 
 	def __getitem__(self,key):
 
 		kwargs = {}
 
 		for item in self.prop:
-			kwargs[item] = getattr(self,item)[key]
 
-		return ConVolume(self.edge[key],self.rows[key],**kwargs)
+			prop = getattr(self,item)
 
-	def set_prop(self,**kwargs):
-		"""Any kwargs values should follow the size regulation."""
+			if prop.size>1 or self.rows.size<=1:
+				kwargs[item] = prop[key]
+			else:
+				kwargs[item] = prop
 
-		for key,value in kwargs.items():
-			setattr(self,key,value)
-			self.prop.add(key)
+		return RecCube(self.edge[key],self.plat[key],self.rows[key],**kwargs)
 
 	@property
 	def xedge(self):
@@ -65,94 +81,126 @@ class RecCube():
 
 	@property
 	def xmin(self):
-		"""Properties of grids on x-minimum boundary"""
-		cvol,xmin_rows = self.cube.cvol,self.plat[:,0]
-		return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==xmin_rows])
+		"""x-minimum boundary boolean"""
+		return self[self.rows==self.plat[:,0]]
 
 	@property
 	def xpos(self):
-		"""Properties of grids that has x-positive neighbors"""
-		cvol,xmin_rows = self.cube.cvol,self.plat[:,0]
-		return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=xmin_rows])
+		"""x-positive neighbors boolean"""
+		return self[self.rows!=self.plat[:,0]]
 
 	@property
 	def xneg(self):
-		"""Properties of grids that has x-negative neighbors"""
-		cvol,xmax_rows = self.cube.cvol,self.plat[:,1]
-		return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=xmax_rows])
+		"""x-negative neighbors boolean"""
+		return self[self.rows!=self.plat[:,1]]
 
 	@property
 	def xmax(self):
-		"""Properties of grids on x-maximum boundary"""
-		cvol,xmax_rows = self.cube.cvol,self.plat[:,1]
-		return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==xmax_rows])
+		"""x-maximum boundary boolean"""
+		return self[self.rows==self.plat[:,1]]
 
 	@property
 	def ymin(self):
-		"""Properties of grids on y-minimum boundary"""
-		if self.dims>1:
-			cvol,ymin_rows = self.cube.cvol,self.plat[:,2]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==ymin_rows])
+		"""y-minimum boundary boolean"""
+		if self.plat.shape[1]>2:
+			return self[self.rows==self.plat[:,2]]
+		return self
 
 	@property
 	def ypos(self):
-		"""Properties of grids that has y-positive neighbors"""
-		if self.dims>1:
-			cvol,ymin_rows = self.cube.cvol,self.plat[:,2]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=ymin_rows])
+		"""y-positive neighbors boolean"""
+		if self.plat.shape[1]>2:
+			return self[self.rows!=self.plat[:,2]]
+		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def yneg(self):
-		"""Properties of grids that has y-negative neighbors"""
-		if self.dims>1:
-			cvol,ymax_rows = self.cube.cvol,self.plat[:,3]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=ymax_rows])
+		"""y-negative neighbors boolean"""
+		if self.plat.shape[1]>2:
+			return self[self.rows!=self.plat[:,3]]
+		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def ymax(self):
-		"""Properties of grids on y-maximum boundary"""
-		if self.dims>1:
-			cvol,ymax_rows = self.cube.cvol,self.plat[:,3]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==ymax_rows])
+		"""y-maximum boundary boolean"""
+		if self.plat.shape[1]>2:
+			return self[self.rows==self.plat[:,3]]
+		return self
 
 	@property
 	def zmin(self):
-		"""Properties of grids on z-minimum boundary"""
-		if self.dims>2:
-			cvol,zmin_rows = self.cube.cvol,self.plat[:,4]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==zmin_rows])
+		"""z-minimum boundary boolean"""
+		if self.plat.shape[1]>4:
+			return self[self.rows==self.plat[:,4]]
+		return self
 
 	@property
 	def zpos(self):
-		"""Properties of grids that has z-positive neighbors"""
-		if self.dims>2:
-			cvol,zmin_rows = self.cube.cvol,self.plat[:,4]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=zmin_rows])
+		"""z-positive neighbors boolean"""
+		if self.plat.shape[1]>4:
+			return self[self.rows!=self.plat[:,4]]
+		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def zneg(self):
-		"""Properties of grids that has z-negative neighbors"""
-		if self.dims>2:
-			cvol,zmax_rows = self.cube.cvol,self.plat[:,5]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows!=zmax_rows])
+		"""z-negative neighbors boolean"""
+		if self.plat.shape[1]>4:
+			return self[self.rows!=self.plat[:,5]]
+		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def zmax(self):
-		"""Properties of grids on z-maximum boundary"""
-		if self.dims>2:
-			cvol,zmax_rows = self.cube.cvol,self.plat[:,5]
-			return RecCube(cvol=cvol,rows=cvol.rows[cvol.rows==zmax_rows])
+		"""z-maximum boundary boolean"""
+		if self.plat.shape[1]>4:
+			return self[self.rows==self.plat[:,5]]
+		return self
 
 if __name__ == "__main__":
 
-	vol = ConVolume(
-		numpy.array([[1,2,3],[1,2,3],[1,2,3],[1,2,3]]),
-		perm=numpy.array((400,500,600,700)))
+	vol = RecCube(
+		numpy.array([[1,3,3],[1,2,3],[1,7,3],[1,5,3]]),
+		numpy.array([[0,1],[0,2],[1,3],[2,3]]),
+		perm=numpy.array((400,500,600,700)),
+		comp=numpy.array((1,)))
 
-	print(type(vol[:2]))
+	print(vol)
+
+	print(vol.xarea)
+
+	print(vol.xmin.rows)
+	print(vol.xmax.rows)
+	print(vol.ymin.rows)
+	print(vol.ymax.rows)
+	print(vol.zmin.rows)
+	print(vol.zmax.rows)
+
+	print(vol.xpos.rows)
+	print(vol.xneg.rows)
+	print(vol.ypos.rows)
+	print(vol.yneg.rows)
+	print(vol.zpos.rows)
+	print(vol.zneg.rows)
+
+	print(vol[:2])
 
 	vol1 = vol[:2]
+
+	print(vol1.xmin.rows)
+	print(vol1.xmax.rows)
+	print(vol1.ymin.rows)
+	print(vol1.ymax.rows)
+	print(vol1.zmin.rows)
+	print(vol1.zmax.rows)
+
+	print(1,vol1.xpos.rows)
+	print(vol1.xneg.rows)
+	print(vol1.ypos.rows)
+	print(vol1.yneg.rows)
+	print(vol1.zpos.rows)
+	print(vol1.zneg.perm)
 
 	print(vol1.xarea)
 
 	print(vol1.perm)
+
+	print(vol1.comp)
