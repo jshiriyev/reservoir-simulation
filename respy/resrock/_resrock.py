@@ -28,6 +28,14 @@ class ResRock():
 
 		self._comp  = None if comp is None else comp/6894.75729
 
+	def set_perm(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
+        """Assigns the permeability values in mD to the grids."""
+
+        self._xperm = xperm
+        
+        self._yperm = self.xperm*yreduce if yperm is None else yperm
+        self._zperm = self.xperm*zreduce if zperm is None else zperm
+
 	def __call__(self,*args,**kwargs):
 
 		return self

@@ -14,23 +14,21 @@ class OnePhase():
         
     """
 
-    _gravity = 9.807  # Gravitational acceleration in SI units
-
     def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,theta=0):
         """
-        grid  : It is a RecCuboid (rectangular cuboid) object.
+        grid   : It is a RecCuboid (rectangular cuboid) object.
 
-        rrock : It is a class with reservoir rock properties.
+        rrock  : It is a class with reservoir rock properties.
 
-        fluid : There is only one mobile phase in the system. There can be
+        fluid  : There is only one mobile phase in the system. There can be
             two slightly compressible fluids where the second one is at irreducible
             saturation, not mobile.
 
-        wcond : tuple of WellCond item.
+        wconds : tuple of WellCond item.
 
-        bcond : tuple of BoundCond item.
+        bconds : tuple of BoundCond item.
 
-        theta : solution type determined in the mixed solver
+        theta  : solution type determined in the mixed solver
             when theta = 0, it reduces to Implicit method
             when theta = 1, it reduces to Explicit method
             when theta = 1/2, it is Crank-Nicolson method
@@ -47,23 +45,23 @@ class OnePhase():
 
         self.theta = theta
 
-    def init(self,dref,pref,tcomp):
-        """Initializing the reservoir pressure
+    def init(self,dref,pref,depth,gradf):
+        """Calculates the initial pressure
         
-        dref    : reference depth in feet
-        pref    : reference pressure in psi
+        dref    : reference depth, ft
+        pref    : reference pressure, psi
 
-        tcomp  : total compressibility 1/psi
+        depth   : depths where to calculate the pressure, ft
+        gradf   : fluid hydrostatic gradient, psi/ft
         """
-
-        self._pinit = self.pzero(
-            dref*0.3048,pref*6894.75729,self.grid._depth,self.fluid._density)
+        self._pinit = (pref+gradf*(depth-dref))*6894.75729
 
     def set_time(self,tstep:float,total:float=None,nstep:int=1):
-        """
+        """Setting the numerical parameters
+
         tstep   : time step defined in days
         total   : total simulation time defined in days
-        nstep   : number of time steps
+        nstep   : number of total time steps
         """
 
         self._tstep = tstep*24*60*60
@@ -79,34 +77,11 @@ class OnePhase():
             self._tstep,self._ttime+self._tstep/2,self._tstep)
 
     def set_tcomp(self,tcomp):
+        """
+        tcomp  : total compressibility 1/psi
+        """
 
         self._tcomp = tcomp/6894.75729
-
-    def set_depth(self,depth):
-        """Assigns the depth values in ft to the grids."""
-
-        self.grid.cube.cvol.set_prop(
-            depth=self.get_property(depth,coeff=0.3048,dtype=numpy.float_))
-
-    def set_poro(self,poro):
-        """Assigns the porosity values in fractions to the grids."""
-
-        self.grid.cube.cvol.set_prop(
-            poro=self.get_property(poro,dtype=numpy.float_))
-
-    def set_perm(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
-        """Assigns the permeability values in mD to the grids."""
-
-        self.grid.cube.cvol.set_prop(
-            xperm=self.get_property(xperm,coeff=9.869233e-16,dtype=numpy.float_))
-
-        self.grid.cube.cvol.set_prop(
-            yperm=self.xperm*yreduce if yperm is None else self.get_property(
-            yperm,coeff=9.869233e-16,dtype=numpy.float_))
-
-        self.grid.cube.cvol.set_prop(
-            zperm=self.xperm*zreduce if zperm is None else self.get_property(
-                zperm,coeff=9.869233e-16,dtype=numpy.float_))
 
     @property
     def tstep(self):
@@ -132,11 +107,17 @@ class OnePhase():
     def tcomp(self):
         return self._tcomp*6894.75729
 
-    def __call__(self,P):
+    def __call__(self,press):
 
         fluid, = self.fluids
 
-        phase = fluid(P,None)
+        phase = fluid(press,None)
+
+        for wcond in self.wconds:
+            wcond.cube = self.cube[wcond.block]
+
+        for bcond in self.bconds:
+            bcond.cube = getattr(getattr(self.cube,bcond.face),"rows")
 
         T = self.get_Tmatrix(phase)
         S = self.get_Smatrix()
@@ -180,15 +161,3 @@ class OnePhase():
         Pwf = self.pressure[Y,:]+self.Q[Y]/self.JR*self.Fluids.viscosity[0]
 
         return Pwf
-
-    @staticmethod
-    def pzero(dref,pref,depths,density):
-        """Calculates the initial pressure
-        
-        dref    : reference depth in m
-        pref    : reference pressure in Pa
-
-        depths  : depths where to calculate the pressure in m
-        density : fluid density in kg/m3
-        """
-        return pref+density*OnePhase._gravity*(depths-dref)

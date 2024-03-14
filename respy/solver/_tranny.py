@@ -1,79 +1,77 @@
+class Vectors():
+
+    def __init__(self):
+
+        self._xtrans = xtrans
+        self._ytrans = ytrans
+        self._ztrans = ztrans
+
+        self._wtrans = wtrans
+        self._btrans = btrans
+
 class Tranny():
 
-    def __init__(self,cube,wconds,bconds):
+    def __init__(self,cube,wconds,bconds,rupdate=False,fupdate=False):
 
         self.cube = cube
 
         self.wconds = wconds
         self.bconds = bconds
 
-        for wcond in self.wconds:
-            wcond.cube = self.cube[wcond.block]
+        self.rupdate = rupdate
+        self.fupdate = fupdate
 
-        for bcond in self.bconds:
-            bcond.cube = getattr(getattr(self.cube,bcond.face),"rows")
+    @property
+    def xrock(self):
+        return self.get_block_xrock(self.cube)
+
+    @property
+    def yrock(self):
+        return self.get_block_yrock(self.cube)
+
+    @property
+    def zrock(self):
+        return self.get_block_zrock(self.cube)
+
+    @property
+    def fluid(self):
+        return get_block_fluid(self.cube)
+    
+    def update(self):
+
+        self.cube.xtrans = self.fluid*self.xrock
+        self.cube.ytrans = self.fluid*self.yrock
+        self.cube.ztrans = self.fluid*self.zrock
 
     def set_trans(self):
 
-        self._xtrans = self._xrrock*self._xfluid
+        xtrans = Tranny.get_harmonic_mean(self.cube.xneg.xtrans,self.cube.xpos.xtrans)
+        ytrans = Tranny.get_harmonic_mean(self.cube.yneg.ytrans,self.cube.ypos.ytrans)
+        ztrans = Tranny.get_harmonic_mean(self.cube.zneg.ztrans,self.cube.zpos.ztrans)
 
-        if self.cube.dims>1:
-            self._ytrans = self._yrrock*self._yfluid
+        wtrans = [wrrock*wfluid for wrrock,wfluid in zip(self._wrrock,self._wfluid)]
+        btrans = [brrock*bfluid for brrock,bfluid in zip(self._brrock,self._bfluid)]
 
-        if self.cube.dims>2:
-            self._ztrans = self._zrrock*self._zfluid
-
-        self._wtrans = [wrrock*wfluid for wrrock,wfluid in zip(self._wrrock,self._wfluid)]
-        self._btrans = [brrock*bfluid for brrock,bfluid in zip(self._brrock,self._bfluid)]
-
-    def set_rrock(self):
-        """Self assigns static transmissibility values."""
-
-        self._xrrock = Tranny.get_rrock_axis('x')
-
-        if self.cube.dims>1:
-            self._yrrock = Tranny.get_rrock_axis('y')
-
-        if self.cube.dims>2:
-            self._zrrock = Tranny.get_rrock_axis('z')
-
-        self._wrrock = [Tranny.get_rrock_well(wcond) for wcond in self.wconds]
-        self._brrock = [Tranny.get_rrock_face(bcond) for bcond in self.bconds]
-
-    def set_fluid(self):
-
-        self._xfluid = Tranny.get_fluid_axis('x')
-
-        if self.cube.dims>1:
-            self._yfluid = Tranny.get_fluid_axis('y')
-
-        if self.cube.dims>2:
-            self._zfluid = Tranny.get_fluid_axis('z')
-
-        self._wfluid = [Tranny.get_fluid_well(wcond) for wcond in self.wconds]
-        self._bfluid = [Tranny.get_fluid_face(bcond) for bcond in self.bconds]
+        return Vectors(xtrans,ytrans,ztrans,wtrans,btrans)
 
     @staticmethod
-    def get_rrock_axis(cube,axis):
-        """Returns static transmissibility values for the given
-        direction and inner faces (interfaces)."""
-
-        edge_neg = getattr(getattr(cube,f"{axis}neg"),f"_{axis}edge")
-        edge_pos = getattr(getattr(cube,f"{axis}pos"),f"_{axis}edge")
-
-        area_neg = getattr(getattr(cube,f"{axis}neg"),f"_{axis}area")
-        area_pos = getattr(getattr(cube,f"{axis}pos"),f"_{axis}area")
-        
-        perm_neg = getattr(getattr(cube,f"{axis}neg"),f"_{axis}perm")
-        perm_pos = getattr(getattr(cube,f"{axis}pos"),f"_{axis}perm")
-
-        block_neg = Tranny.get_block_tranny(edge_neg,area_neg,perm_neg)
-        block_pos = Tranny.get_block_tranny(edge_pos,area_pos,perm_pos)
-
-        return Tranny.get_harmonic_mean(block_neg,block_pos)
+    def get_block_xrock(cube):
+        return (cube._xperm*cube._xarea)/(cube._xedge)
 
     @staticmethod
-    def get_rrock_well(cond):
+    def get_block_yrock(cube):
+        return (cube._yperm*cube._yarea)/(cube._yedge)
+
+    @staticmethod
+    def get_block_zrock(cube):
+        return (cube._zperm*cube._zarea)/(cube._zedge)
+
+    @staticmethod
+    def get_block_fluid(cube):
+        return (cube._rel0)/(cube._visc*cube._fvf)
+
+    @staticmethod
+    def get_block_wrock(cond):
         """Returns static transmissibility values for the given
         vertical well."""
 
@@ -98,21 +96,6 @@ class Tranny():
         return (2*numpy.pi*dhk)/(numpy.log(req/cond.radius)+cond.skin)
 
     @staticmethod
-    def get_rrock_face(cond):
-        """Returns static transmissibility values for the given
-        surface on the exterior boundary."""
-        
-        edge = getattr(cond.block,f"_{cond.face[0]}edge")
-        area = getattr(cond.block,f"_{cond.face[0]}area")
-        perm = getattr(cond.block,f"_{cond.face[0]}perm")
-
-        return Tranny.get_block_tranny(edge,area,perm)
-
-    @staticmethod
-    def get_block_tranny(edge,area,perm):
-        return (perm*area)/edge
-
-    @staticmethod
     def get_equiv_radius(edge1,perm1,edge2,perm2):
 
         sqrt21 = numpy.power(perm2/perm1,1/2)*numpy.power(edge1,2)
@@ -124,5 +107,19 @@ class Tranny():
         return 0.28*numpy.sqrt(sqrt21+sqrt12)/(quar21+quar12)
 
     @staticmethod
+    def get_block_brock(cond):
+        """Returns static transmissibility values for the given
+        surface on the exterior boundary."""
+        return getattr(self,f"get_block_{cond.face[0]}rock")(cond.block)
+
+    @staticmethod
+    def get_weighted_mean(perm1,perm2):
+        return (perm1+perm2)/2
+
+    @staticmethod
     def get_harmonic_mean(perm1,perm2):
         return (2*perm1*perm2)/(perm1+perm2)
+
+    @staticmethod
+    def get_geometric_mean(perm1,perm2):
+        return numpy.sqrt(perm1*perm2)
