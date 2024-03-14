@@ -16,11 +16,11 @@ class OnePhase():
 
     _gravity = 9.807  # Gravitational acceleration in SI units
 
-    def __init__(self,grid,rock,fluid,wconds=None,bconds=None,theta=0):
+    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,theta=0):
         """
         grid  : It is a RecCuboid (rectangular cuboid) object.
 
-        rock  : It is a 
+        rrock : It is a class with reservoir rock properties.
 
         fluid : There is only one mobile phase in the system. There can be
             two slightly compressible fluids where the second one is at irreducible
@@ -39,35 +39,48 @@ class OnePhase():
 
         self.grid = grid
 
-        self.rock = rock
-
-        self.set_static()
-
+        self.rrock = rrock
         self.fluid = fluid
 
         self.wconds = () if wconds is None else wconds
         self.bconds = () if bconds is None else bconds
 
-        self._theta = theta
+        self.theta = theta
 
-    @property
-    def theta(self):
-        return self._theta
+    def init(self,dref,pref,tcomp):
+        """Initializing the reservoir pressure
+        
+        dref    : reference depth in feet
+        pref    : reference pressure in psi
 
-    def get_property(self,quality,coeff=1.,dtype=None):
-        """coeff    : conversion factor"""
+        tcomp  : total compressibility 1/psi
+        """
 
-        quality = numpy.asarray(quality)
+        self._pinit = self.pzero(
+            dref*0.3048,pref*6894.75729,self.grid._depth,self.fluid._density)
 
-        if dtype is not None:
-            quality = quality.astype(dtype)
+    def set_time(self,tstep:float,total:float=None,nstep:int=1):
+        """
+        tstep   : time step defined in days
+        total   : total simulation time defined in days
+        nstep   : number of time steps
+        """
 
-        quality = quality.flatten()*coeff
+        self._tstep = tstep*24*60*60
 
-        if quality.size==1:
-            quality = quality.repeat(self.numtot)
+        if total is None:
+            self._ttime = self._tstep*nstep
+            self._nstep = nstep
+        else:
+            self._ttime = total*24*60*60
+            self._nstep = int(self._ttime/self._tstep)
 
-        return quality.reshape((-1,1))
+        self._time = numpy.arange(
+            self._tstep,self._ttime+self._tstep/2,self._tstep)
+
+    def set_tcomp(self,tcomp):
+
+        self._tcomp = tcomp/6894.75729
 
     def set_depth(self,depth):
         """Assigns the depth values in ft to the grids."""
@@ -95,28 +108,6 @@ class OnePhase():
             zperm=self.xperm*zreduce if zperm is None else self.get_property(
                 zperm,coeff=9.869233e-16,dtype=numpy.float_))
 
-    def set_comp(self,P):
-        return self.__comp(P)
-
-    def set_time(self,tstep:float,total:float=None,nstep:int=1):
-        """
-        tstep   : time step defined in days
-        total   : total simulation time defined in days
-        nstep   : number of time steps
-        """
-
-        self._tstep = tstep*24*60*60
-
-        if total is None:
-            self._ttime = self._tstep*nstep
-            self._nstep = nstep
-        else:
-            self._ttime = total*24*60*60
-            self._nstep = int(self._ttime/self._tstep)
-
-        self._time = numpy.arange(
-            self._tstep,self._ttime+self._tstep/2,self._tstep)
-
     @property
     def tstep(self):
         return self._tstep/(24*60*60)
@@ -132,20 +123,6 @@ class OnePhase():
     @property
     def time(self):
         return self._time/(24*60*60)
-
-    def init(self,dref,pref,tcomp):
-        """Initializing the reservoir pressure
-        
-        dref    : reference depth in feet
-        pref    : reference pressure in psi
-
-        tcomp  : total compressibility 1/psi
-        """
-
-        self._pinit = self.pzero(
-            dref*0.3048,pref*6894.75729,self.grid._depth,self.fluid._density)
-
-        self._tcomp = tcomp/6894.75729
 
     @property
     def pinit(self):

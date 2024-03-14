@@ -5,11 +5,9 @@ import numpy
 if __name__ == "__main__":
 	sys.path.append(r'C:\Users\3876yl\Documents\respy')
 
-from respy.grids._cube import RecCube
+class GridDelta():
 
-class GridDelta(RecCube):
-
-	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,depth=None,dims=None,**kwargs):
+	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,dims=None):
 		"""Three-dimensional rectangular cuboid initialized with:
 
 		xdelta	: length of grids in ft, shape = (Nlength,)
@@ -23,23 +21,15 @@ class GridDelta(RecCube):
 		The object has properties to calculate the control volume implementation.
 		"""
 
-		object.__setattr__(self,"xdelta",self.set_delta(xdelta))
-		object.__setattr__(self,"ydelta",self.set_delta(ydelta))
-		object.__setattr__(self,"zdelta",self.set_delta(zdelta))
+		self.xdelta = self.set_delta(xdelta)
+		self.ydelta = self.set_delta(ydelta)
+		self.zdelta = self.set_delta(zdelta)
 
-		object.__setattr__(self,"dims",self.set_dims(dims))
-
-		rows = numpy.arange(self.numtot,dtype=numpy.int_)
-
-		object.__setattr__(self,"rows",rows)
-		object.__setattr__(self,"prop",set())
-
-		for key,value in kwargs.items():
-			self.__setattr__(key,value)
+		self.dims = self.set_dims(dims)
 
 	def set_delta(self,delta):
 
-		return numpy.asarray(delta).flatten().astype(numpy.float_)
+		return numpy.asarray(delta).astype(numpy.float_)
 
 	def set_dims(self,dims):
 

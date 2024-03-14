@@ -11,9 +11,11 @@ from respy.utils._prop import Prop
 
 class PorMed():
 
-    def __init__(self,poro=None,xperm=None,yperm=None,zperm=None,comp=None):
+    def __init__(self,depth=None,poro=None,xperm=None,yperm=None,zperm=None,comp=None):
         """
         """
+
+        self._depth = depth*0.3048
 
         self.__poro  = Prop(poro)
 
@@ -22,6 +24,10 @@ class PorMed():
         self.__zperm = Prop(zperm)
 
         self.__comp  = Prop(comp)
+
+    @property
+    def depth(self):
+        return self._depth/0.3048
     
     @property
     def poro(self):

@@ -2,7 +2,7 @@ from scipy.sparse import csr_matrix as csr
 
 from respy.fluid._fluid import Fluid
 
-class Sparse:
+class Assembly:
 
     def Tmatrix(self,phase):
         """
