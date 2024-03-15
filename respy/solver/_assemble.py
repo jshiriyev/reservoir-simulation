@@ -2,7 +2,13 @@ from scipy.sparse import csr_matrix as csr
 
 from respy.fluid._fluid import Fluid
 
-class Assembly:
+from respy.solver._vector import Vector
+
+class Assemble():
+
+    def __init__(self,vec:Vector):
+
+        self.vec = vec
 
     def Tmatrix(self,phase):
         """

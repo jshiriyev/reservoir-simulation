@@ -1,162 +1,177 @@
+import sys
+
+if __name__ == "__main__":
+    sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+
+from respy.solver._cube import RecCube
+
+from respy.solver._time import Time
+
+from respy.solver._block import Block
+
+from respy.solver._assemble import Assemble
+
 class OnePhase():
     """
-    This class solves for single phase reservoir flow in Rectangular Cuboids;
-        
-        - Static Rock and Static Fluid Properties.
-        - Static Rock and Dynamic Fluid Properties
-        - Dynamic Rock and Dynamic Fluid Properties
-
-    also it includes:
-
-        - Implicit Pressure Solver
-        - Explicit Pressure Solver
-        - Mixed Pressure Solver
-        
+    The class solves for single phase reservoir flow in Rectangular Cuboids;
     """
 
-    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,theta=0):
+    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None):
         """
         grid   : It is a RecCuboid (rectangular cuboid) object.
 
         rrock  : It is a class with reservoir rock properties.
 
-        fluid  : There is only one mobile phase in the system. There can be
-            two slightly compressible fluids where the second one is at irreducible
-            saturation, not mobile.
+        fluid  : There is only one mobile phase in the system. There
+                 can be two slightly compressible fluids where the
+                 second one is at irreducible saturation, not mobile.
 
         wconds : tuple of WellCond item.
 
         bconds : tuple of BoundCond item.
 
-        theta  : solution type determined in the mixed solver
-            when theta = 0, it reduces to Implicit method
-            when theta = 1, it reduces to Explicit method
-            when theta = 1/2, it is Crank-Nicolson method
-
         """
 
         self.grid = grid
 
-        self.rrock = rrock
-        self.fluid = fluid
+        self.set_grid(rrock,fluid)
 
         self.wconds = () if wconds is None else wconds
         self.bconds = () if bconds is None else bconds
 
-        self.theta = theta
+    def set_grid(self):
 
-    def init(self,dref,pref,depth,gradf):
+        self.cube = RecCube(
+             edge = self.grid.edge,
+             plat = self.grid.plat,
+            rrock = rrock,
+            fluid = fluid,
+            )
+
+    def set_rrock(self):
+
+        props = ("poro","xperm","yperm","zperm","comp","depth")
+
+        count = 0
+
+        for prop in props:
+
+            pp = getattr(self.rrock,prop)
+
+            if callable(pp):
+                count += 1
+
+            setattr(self.cube,prop,pp)
+
+        if count>0:
+            return True
+
+        return False
+
+    def set_fluid(self):
+
+        props = ("visc","rho","comp","fvf","rel0")
+
+        count = 0
+
+        for prop in props:
+
+            pp = getattr(self.fluid,prop)
+
+            if callable(pp):
+                count += 1
+
+            setattr(self.cube,prop,pp)
+
+        if count>0:
+            return True
+
+        return False
+
+    def init(self,pinit=None,refp=None,grad=None):
         """Calculates the initial pressure
         
-        dref    : reference depth, ft
-        pref    : reference pressure, psi
+        pinit   : initial pressure in psi; If not defined, will be
+                  calculated from reference point and reservoir rock depths.
 
-        depth   : depths where to calculate the pressure, ft
-        gradf   : fluid hydrostatic gradient, psi/ft
-        """
-        self._pinit = (pref+gradf*(depth-dref))*6894.75729
-
-    def set_time(self,tstep:float,total:float=None,nstep:int=1):
-        """Setting the numerical parameters
-
-        tstep   : time step defined in days
-        total   : total simulation time defined in days
-        nstep   : number of total time steps
+        refp    : reference point (depth:ft,pressure:psi)
+        grad    : fluid hydrostatic gradient, psi/ft
         """
 
-        self._tstep = tstep*24*60*60
+        if pinit is None:
+            pinit = refp[1]+grad*(self.rrock.depth-refp[0])
 
-        if total is None:
-            self._ttime = self._tstep*nstep
-            self._nstep = nstep
-        else:
-            self._ttime = total*24*60*60
-            self._nstep = int(self._ttime/self._tstep)
+        self._pinit = pinit*6894.75729
 
-        self._time = numpy.arange(
-            self._tstep,self._ttime+self._tstep/2,self._tstep)
+    def set_time(self,time:Time):
+        
+        self.time = Time
 
-    def set_tcomp(self,tcomp):
+    def set_comp(self,comp=None):
         """
-        tcomp  : total compressibility 1/psi
+        comp  : total compressibility 1/psi
         """
 
-        self._tcomp = tcomp/6894.75729
+        if comp is None:
+            comp = self.fluid.comp+self.rrock.comp
 
-    @property
-    def tstep(self):
-        return self._tstep/(24*60*60)
-
-    @property
-    def ttime(self):
-        return self._ttime/(24*60*60)
-
-    @property
-    def nstep(self):
-        return self._nstep
-    
-    @property
-    def time(self):
-        return self._time/(24*60*60)
-
-    @property
-    def pinit(self):
-        return self._pinit/6894.75729
-
-    @property
-    def tcomp(self):
-        return self._tcomp*6894.75729
-
-    def __call__(self,press):
-
-        fluid, = self.fluids
-
-        phase = fluid(press,None)
-
-        for wcond in self.wconds:
-            wcond.cube = self.cube[wcond.block]
-
-        for bcond in self.bconds:
-            bcond.cube = getattr(getattr(self.cube,bcond.face),"rows")
-
-        T = self.get_Tmatrix(phase)
-        S = self.get_Smatrix()
-        G = self.get_Gvector(phase)
-        J = self.get_Jmatrix(phase)
-        Q = self.get_Qvector(phase)
-
-        return Matrix(T,V,G,J,Q,self.tcomp,self.tstep)
+        self._comp = comp/6894.75729
 
     def solve(self,**kwargs):
+        """
+        theta  : solution type determined in the mixed solver
+            when theta = 0, it reduces to Implicit method
+            when theta = 1, it reduces to Explicit method
+            when theta = 1/2, it is Crank-Nicolson method
+        """
 
         pass
 
     def static(self):
 
-        P = self._pinit
+        Pn = self._pinit
 
-        vec = Block(cube,P,tstep,comp)
-        mat = Shape(cube,P,vec)
+        vec = Block(cube,Pn,tstep,comp)
+        mat = Shape(cube,Pn,vec)
 
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
         
-        for k in range(self.nstep):
+        for n in range(self.nstep):
 
-            P = mat.implicit_pressure(P)
+            Pn = mat.implicit_pressure(Pn)
 
-            print(f"{k} time step is complete...")
+            print(f"{n:10}",Pn.flatten())
             
-            self._pressure[:,k] = P
+            self._pressure[:,n] = Pn
 
-            P = P.reshape((-1,1))
+            Pn = Pn.reshape((-1,1))
 
     def picard(self):
 
-        pass
+        for k in range(100):
+
+            Fm = mat.implicit_residual(tstep,Pn,Pk)
+
+            Pk = mat.implicit_pressure(tstep,Pn,Pk)
+
+            error = np.linalg.norm(Fm,2)
+
+            # print(f"{k:2}",f"{error:.5e}",Pk.flatten())
+
+            if np.linalg.norm(Fm,2)<1e-6:
+                break
 
     def newton(self):
 
-        pass
+        for k in range(100):
+
+            F = mat.implicit_residual(tstep,P,Pk)
+            Z = jacobian(tstep,P,Pk)
+            Pk += np.linalg.solve(Z,-F)
+            error = np.linalg.norm(F,2)
+            # print(f"{k:2}",f"{error:.5e}",Pk.flatten())
+            if np.linalg.norm(F,2)<1e-6:
+                break
 
     @property
     def pressure(self):
@@ -169,3 +184,11 @@ class OnePhase():
         Pwf = self.pressure[Y,:]+self.Q[Y]/self.JR*self.Fluids.viscosity[0]
 
         return Pwf
+
+    @property
+    def pinit(self):
+        return self._pinit/6894.75729
+
+    @property
+    def comp(self):
+        return self._comp*6894.75729

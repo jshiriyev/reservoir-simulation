@@ -1,14 +1,11 @@
 class Block():
 
-    def __init__(self,cube,wconds,bconds,rupdate=False,fupdate=False):
+    def __init__(self,cube,wconds,bconds):
 
         self.cube = cube
 
         self.wconds = wconds
         self.bconds = bconds
-
-        self.rupdate = rupdate
-        self.fupdate = fupdate
 
     @property
     def xrock(self):
