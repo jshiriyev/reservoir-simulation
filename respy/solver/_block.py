@@ -1,15 +1,4 @@
-class Vectors():
-
-    def __init__(self):
-
-        self._xtrans = xtrans
-        self._ytrans = ytrans
-        self._ztrans = ztrans
-
-        self._wtrans = wtrans
-        self._btrans = btrans
-
-class Tranny():
+class Block():
 
     def __init__(self,cube,wconds,bconds,rupdate=False,fupdate=False):
 
