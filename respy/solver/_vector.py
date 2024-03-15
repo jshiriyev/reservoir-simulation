@@ -1,6 +1,6 @@
 class Vector():
 
-    def __init__(self,X,Y,Z,S,W,B,t=None,c=None):
+    def __init__(self,X,Y,Z,S,W,B,t,c):
         """
         X   : Block transmissibility in x-direction
         Y   : Block transmissibility in y-direction

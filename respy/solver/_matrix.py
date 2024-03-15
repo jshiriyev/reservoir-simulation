@@ -1,4 +1,4 @@
-from scipy.sparse import diags
+from scipy.sparse import csr_matrix as csr
 
 class Matrix():
 
@@ -19,6 +19,43 @@ class Matrix():
         self._G = G
         self._J = J
         self._Q = Q
+
+    def implicit_pressure(self,Pprev):
+        """Implicit solution: self is defined at Pnext, and
+        returned pressure is Pnext."""
+
+        LHS = self._T+self._J+self._C
+        RHS = self._C
+        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
+
+        return linalg.spsolve(LHS,RHS)
+
+    def implicit_residual(self,Pnext,Pprev):
+        """Returns residual vector for the self defined at Pnext in
+        SI units, (m**3)/(sec)"""
+        LHS = self._T+self._J+self._C
+        RHS = self._C
+        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
+
+        return -csr.dot(LHS,Pnext)+RHS
+
+    def explicit_pressure(self,Pprev):
+        """Explicit solution: self is defined at Pprev, and
+        returned pressure is Pnext."""
+        LHS = self._C
+        RHS = self._C-(self._T+self._J)
+        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
+
+        return linalg.spsolve(LHS,RHS)
+
+    def explicit_residual(self,Pnext,Pprev):
+        """Returns residual vector for the self defined at Pprev in
+        SI units, (m**3)/(sec)"""
+        LHS = self._C
+        RHS = self._C-(self._T+self._J)
+        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
+
+        return -csr.dot(LHS,Pnext)+RHS
 
     @property
     def T(self):
@@ -44,66 +81,10 @@ class Matrix():
         """Converting from SI Units to Oil Field Units."""
         return self._Q*(3.28084**3)*(24*60*60)
 
-    def __call__(self,*args,**kwargs):
-
-        return self
-
-    def implicit(self,Pprev):
-        """Implicit solution: self is defined at Pnext, and
-        returned pressure is Pnext."""
-
-        LHS = self._T+self._J+self._C
-        RHS = self._C
-        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
-
-        return linalg.spsolve(LHS,RHS)
-
-    def implicit_residual(self,Pnext,Pprev):
-        """Returns residual vector for the self defined at Pnext in
-        SI units, (m**3)/(sec)"""
-        LHS = self._T+self._J+self._C
-        RHS = self._C
-        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
-
-        return -csr.dot(LHS,Pnext)+RHS
-
-    def explicit(self,Pprev):
-        """Explicit solution: self is defined at Pprev, and
-        returned pressure is Pnext."""
-        LHS = self._C
-        RHS = self._C-(self._T+self._J)
-        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
-
-        return linalg.spsolve(LHS,RHS)
-
-    def explicit_residual(self,Pnext,Pprev):
-        """Returns residual vector for the self defined at Pprev in
-        SI units, (m**3)/(sec)"""
-        LHS = self._C
-        RHS = self._C-(self._T+self._J)
-        RHS = csr.dot(RHS,Pprev)+self._Q+self._G
-
-        return -csr.dot(LHS,Pnext)+RHS
-
     @property
     def shape(self):
         """Shape of the matrices of transmissibility calculations"""
         return self.T.shape
-
-    @property
-    def size(self):
-        """Shape of the vectors of transmissibility calculations"""
-        return self.T.size
-
-    @property
-    def pa2psi(self):
-        """Pressure conversion factor from SI Units to Oil Field Units."""
-        return 1/6894.76
-
-    @property
-    def psi2pa(self):
-        """Pressure conversion factor from Oil Field Units to SI Units."""
-        return 6894.76
 
 if __name__ == "__main__":
 

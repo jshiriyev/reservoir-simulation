@@ -127,28 +127,36 @@ class OnePhase():
 
         return Matrix(T,V,G,J,Q,self.tcomp,self.tstep)
 
-    def solve(self):
+    def solve(self,**kwargs):
+
+        pass
+
+    def static(self):
 
         P = self._pinit
+
+        vec = Block(cube,P,tstep,comp)
+        mat = Shape(cube,P,vec)
 
         self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
         
         for k in range(self.nstep):
 
-            mat = self(P,self.tstep)
-
-            if self.theta==0:
-                P = self.implicit(P,T,J,Act,Q,G)
-            elif self.theta==1:
-                P = self.explicit(P,T,J,Act,Q,G)
-            else:
-                P = self.mixed(P,T,J,Act,Q,G,self.theta)
+            P = mat.implicit_pressure(P)
 
             print(f"{k} time step is complete...")
             
             self._pressure[:,k] = P
 
             P = P.reshape((-1,1))
+
+    def picard(self):
+
+        pass
+
+    def newton(self):
+
+        pass
 
     @property
     def pressure(self):
