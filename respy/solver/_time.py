@@ -31,7 +31,7 @@ class Time():
 
 	@property
 	def total(self):
-		return self._ttime/(24*60*60)
+		return self._total/(24*60*60)
 
 	@property
 	def nstep(self):
