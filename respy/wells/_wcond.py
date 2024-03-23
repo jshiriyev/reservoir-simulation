@@ -5,10 +5,10 @@ class WellCond():
 
     def __init__(self,radius:float,block:tuple,axis:str="z",skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
+        radius  : well radius, ft
         block   : block indices containing the well
         axis    : (z) vertical or (x,y) horizontal well
 
-        radius  : well radius, ft
         skin    : skin factor of the well, dimensionless
 
         start   : start time for implementing the condition, days

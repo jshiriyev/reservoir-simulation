@@ -4,7 +4,7 @@ class Fluid():
     given pressure and temperature.
     """
 
-    def __init__(self,visc=None,rho=None,comp=None,fvf=None,rel0=1.0):
+    def __init__(self,visc=None,rho=None,comp=None,fvf=None):
         """
         Initializes a fluid with certain viscosity, density,
         compressibility and formation volume factor:
@@ -14,22 +14,12 @@ class Fluid():
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
 
-        rel0    : end point relative permeability, dimensionless
-
-        Returns the same parameters for any *args and **kwargs
-        when called.
         """
         
         self._visc = None if visc is None else visc*0.001
         self._rho  = None if rho is None else rho*16.0185
         self._comp = None if comp is None else comp/6894.75729
         self._fvf  = fvf
-
-        self._rel0 = rel0
-
-    def __call__(self,press):
-
-        return self
 
     @property
     def visc(self):
@@ -49,10 +39,6 @@ class Fluid():
     @property
     def fvf(self):
         return self._fvf
-
-    @property
-    def perm0(self):
-        return self._rel0
 
 if __name__ == "__main__":
 
