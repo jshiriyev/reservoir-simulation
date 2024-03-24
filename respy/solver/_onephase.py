@@ -8,8 +8,7 @@ from respy.solver._cube import RecCube
 from respy.solver._time import Time
 
 from respy.solver._block import Block
-
-from respy.solver._assemble import Assemble
+from respy.solver._build import Build
 
 class OnePhase():
     """
@@ -18,75 +17,34 @@ class OnePhase():
 
     def __init__(self,grid,rrock,fluid,wconds=None,bconds=None):
         """
-        grid   : It is a RecCuboid (rectangular cuboid) object.
+        grid   : It is a GridDelta instance.
 
-        rrock  : It is a class with reservoir rock properties.
+        rrock  : It is a ResRock instance or any other rock class that
+                 calculates rock properties at any given pressure.
 
-        fluid  : There is only one mobile phase in the system. There
-                 can be two slightly compressible fluids where the
-                 second one is at irreducible saturation, not mobile.
+        fluid  : It is a Fluid instance or any other fluid class that
+                 calculates fluid properties at any given pressure. In the
+                 solution, there can be only one mobile phase. Multiple
+                 fluid phases may exist with only one mopbile phase; the
+                 rest is at irreducible saturation, not mobile.
 
-        wconds : tuple of WellCond item.
+        wconds : tuple of WellCond instance.
 
-        bconds : tuple of BoundCond item.
+        bconds : tuple of BoundCond instance.
 
         """
 
-        self.grid = grid
-
-        self.set_grid(rrock,fluid)
-
-        self.wconds = () if wconds is None else wconds
-        self.bconds = () if bconds is None else bconds
-
-    def set_grid(self):
-
-        self.cube = RecCube(
-             edge = self.grid.edge,
-             plat = self.grid.plat,
-            rrock = rrock,
-            fluid = fluid,
+        self.block = Block(
+              cube = RecCube(grid.edge,grid.plat),
+             rrock = rrock,
+             fluid = fluid,
+            wconds = () if wconds is None else wconds,
+            bconds = () if bconds is None else bconds,
             )
 
-    def set_rrock(self):
-
-        props = ("poro","xperm","yperm","zperm","comp","depth")
-
-        count = 0
-
-        for prop in props:
-
-            pp = getattr(self.rrock,prop)
-
-            if callable(pp):
-                count += 1
-
-            setattr(self.cube,prop,pp)
-
-        if count>0:
-            return True
-
-        return False
-
-    def set_fluid(self):
-
-        props = ("visc","rho","comp","fvf","rel0")
-
-        count = 0
-
-        for prop in props:
-
-            pp = getattr(self.fluid,prop)
-
-            if callable(pp):
-                count += 1
-
-            setattr(self.cube,prop,pp)
-
-        if count>0:
-            return True
-
-        return False
+        self.build = Build(
+              cube = self.block.cube
+            )
 
     def init(self,pinit=None,refp=None,grad=None):
         """Calculates the initial pressure
@@ -117,7 +75,7 @@ class OnePhase():
 
         self._comp = comp/6894.75729
 
-    def solve(self,**kwargs):
+    def solve(self):
         """
         theta  : solution type determined in the mixed solver
             when theta = 0, it reduces to Implicit method
@@ -125,16 +83,16 @@ class OnePhase():
             when theta = 1/2, it is Crank-Nicolson method
         """
 
-        pass
-
-    def static(self):
-
         Pn = self._pinit
 
-        vec = Block(cube,Pn,tstep,comp)
-        mat = Shape(cube,Pn,vec)
+        vec = self.block()
 
-        self._pressure = numpy.zeros((self.grid.numtot,self._time.size))
+        vec.set_A()
+        vec.set_C()
+
+        mat = self.build(vec)
+
+        self._press = numpy.zeros((self.grid.numtot,self._time.size))
         
         for n in range(self.nstep):
 
@@ -142,7 +100,7 @@ class OnePhase():
 
             print(f"{n:10}",Pn.flatten())
             
-            self._pressure[:,n] = Pn
+            self._press[:,n] = Pn
 
             Pn = Pn.reshape((-1,1))
 
@@ -174,14 +132,14 @@ class OnePhase():
                 break
 
     @property
-    def pressure(self):
-        return self._pressure/6894.75729
+    def press(self):
+        return self._press/6894.75729
 
-    def postprocess(self):
+    def pproc(self):
 
         Y = int((self.grid.numtot-1)/2)
 
-        Pwf = self.pressure[Y,:]+self.Q[Y]/self.JR*self.Fluids.viscosity[0]
+        Pwf = self.press[Y,:]+self.Q[Y]/self.JR*self.Fluids.viscosity[0]
 
         return Pwf
 

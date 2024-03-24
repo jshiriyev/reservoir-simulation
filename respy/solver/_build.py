@@ -1,14 +1,17 @@
 from scipy.sparse import csr_matrix as csr
 
-from respy.fluid._fluid import Fluid
-
 from respy.solver._vector import Vector
+from respy.solver._matrix import Matrix
 
-class Assemble():
+class Build():
 
-    def __init__(self,vec:Vector):
+    def __init__(self,cube):
 
-        self.vec = vec
+        self.cube = cube
+
+    def __call__(self,vec:Vector):
+
+        return Matrix(T,C,G,J,Q)
 
     def Tmatrix(self,phase):
         """
@@ -27,7 +30,7 @@ class Assemble():
 
         return tmatrix
 
-    def tcharge(self,axis:str,tmatrix:csr,phase:Fluid):
+    def tcharge(self,axis:str,tmatrix:csr,phase):
         """
         Returns updated transmissibility matrix:
 

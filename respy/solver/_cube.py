@@ -44,7 +44,9 @@ class RecCube():
 
 			prop = getattr(self,item)
 
-			if prop.size>1 or self.rows.size<=1:
+			if callable(prop):
+				kwargs[item] = prop
+			elif prop.size>1 or self.rows.size<=1:
 				kwargs[item] = prop[key]
 			else:
 				kwargs[item] = prop
@@ -165,7 +167,8 @@ if __name__ == "__main__":
 		numpy.array([[1,3,3],[1,2,3],[1,7,3],[1,5,3]]),
 		numpy.array([[0,1],[0,2],[1,3],[2,3]]),
 		perm=numpy.array((400,500,600,700)),
-		comp=numpy.array((1,)))
+		comp=numpy.array((1,)),
+		name=lambda x: x**2)
 
 	print(vol)
 
@@ -208,3 +211,5 @@ if __name__ == "__main__":
 	print(vol1.perm)
 
 	print(vol1.comp)
+
+	print(vol1.name)

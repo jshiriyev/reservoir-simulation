@@ -147,15 +147,14 @@ class GridDelta():
 
 if __name__ == "__main__":
 
-	grid = GridDelta((750,1000,1250),(750,1000,1250),(20,),
-		perm=numpy.array((1,2,3,4,5,6,7,8,9)).reshape((-1,1)))
+	grid = GridDelta((750,1000,1250),(750,1000,1250),(20,),)
 
 	# print(rcube.ymin)
 
 	# print(grid.cube.xarea)
 
-	print(grid.xmin.rows)
-	print(grid.xmin.perm)
+	# print(grid.xmin.rows)
+	# print(grid.xmin.perm)
 
 	print(grid.xcenter)
 

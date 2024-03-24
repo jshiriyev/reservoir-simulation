@@ -9,7 +9,7 @@ class ResRock():
 		Initializes a reservoir rock with the following petrophysical parameters:
 		
 		poro    : porosity of the rock, dimensionless
-		depth 	: depth of reservoir, ft
+		depth 	: depth of reservoir rock, ft
 		comp 	: isothermal compressibility factor of rock, 1/psi
 
 		"""
