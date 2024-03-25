@@ -43,7 +43,9 @@ class OnePhase():
             )
 
         self.build = Build(
-              cube = self.block.cube
+              cube = self.block.cube,
+            wconds = self.block.wconds,
+            bconds = self.block.bconds,
             )
 
     def init(self,pinit=None,refp=None,grad=None):

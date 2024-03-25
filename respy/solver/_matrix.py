@@ -2,20 +2,20 @@ from scipy.sparse import csr_matrix as csr
 
 class Matrix():
 
-    def __init__(self,T,C,G,J,Q):
+    def __init__(self,C,T,G,J,Q):
         """Inputs should be in SI units.
 
-        T   : Transmissibility Matrix in SI units, (m**3)/(Pa*sec)
         C   : Accumulation and compressibility multiplication
               in SI units, (m**3)/(Pa*sec)
+        T   : Transmissibility Matrix in SI units, (m**3)/(Pa*sec)
         G   : Gravity Vector in SI units, (m**3)/(sec)
         J   : Constant Pressure Matrix in SI units, (m**3)/(Pa*sec)
         Q   : Constant Flow Rate Vector in SI units, (m**3)/(sec)
         
         """
 
-        self._T = T
         self._C = C
+        self._T = T
         self._G = G
         self._J = J
         self._Q = Q

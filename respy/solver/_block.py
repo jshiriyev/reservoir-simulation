@@ -52,7 +52,7 @@ class Block():
         # 5. Boundary block calculations
         bvect = [self.get_bpart(rpart,fpart,bcond) for bcond in self.bconds]
 
-        return Vector(svect,xvect,yvect,zvect,wvect,bvect)
+        return Vector(rrock,fluid,svect,xvect,yvect,zvect,wvect,bvect)
 
     def get_rpvol(self,rrock):
         """returns rock pore volume"""
@@ -152,7 +152,7 @@ class Block():
         ky = rrock._yperm[wcond.block]
         kz = rrock._zperm[wcond.block]
 
-        ff = fpart._mobil[wcond.block]
+        fm = fpart._mobil[wcond.block]
 
         if wcond.axis == "x":
             dhk = dx*numpy.sqrt(ky*kz)
@@ -164,7 +164,7 @@ class Block():
             dhk = dz*numpy.sqrt(kx*ky)
             req = self.get_equiv_radius(dx,kx,dy,ky)
 
-        return (2*numpy.pi*dhk)*ff/(numpy.log(req/wcond.radius)+wcond.skin)
+        return (2*numpy.pi*dhk)*fm/(numpy.log(req/wcond.radius)+wcond.skin)
 
     def get_bpart(self,rpart,fpart,bcond):
         """Returns exterior block transmissibility values for the

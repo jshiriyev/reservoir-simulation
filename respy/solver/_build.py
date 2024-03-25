@@ -1,52 +1,85 @@
 from scipy.sparse import csr_matrix as csr
 
+from scipy.sparse import diags
+
 from respy.solver._vector import Vector
 from respy.solver._matrix import Matrix
 
 class Build():
 
-    def __init__(self,cube):
+    def __init__(self,cube,wconds,bconds):
 
         self.cube = cube
 
+        self.wconds = wconds
+        self.bconds = bconds
+
     def __call__(self,vec:Vector):
 
-        return Matrix(T,C,G,J,Q)
+        C = self.get_cmatrix(vec)
+        T = self.get_tmatrix(vec)
+        G = self.get_gvector(vec,T)
+        J = self.get_jmatrix(vec)
+        Q = self.get_qvector(vec)
 
-    def Tmatrix(self,phase):
-        """
-        Sets transmissibility matrix with dynamic transmissibility values.
-        """
+        return Matrix(C,T,G,J,Q)
 
+    def get_cmatrix(self,vec:Vector):
+        """Returns C matrix filled with diagonal values."""
+        cmatrix = diags(vec._C,shape=self.matrix)
+
+        return cmatrix
+
+    def get_tmatrix(self,vec:Vector):
+        """Returns T matrix filled with diagonal and offset values."""
         tmatrix = csr(self.matrix)
 
-        tmatrix = self.tcharge('x',tmatrix,phase)
+        tmatrix = self.set_tmatrix_interblock(
+            tmatrix,vec._X,self.cube.xneg,self.cube.xpos)
 
-        if self.grid.flodim>1:
-            tmatrix = self.tcharge('y',tmatrix,phase)
+        tmatrix = self.set_tmatrix_interblock(
+            tmatrix,vec._Y,self.cube.yneg,self.cube.ypos)
 
-        if self.grid.flodim>2:
-            tmatrix = self.tcharge('z',tmatrix,phase)
+        tmatrix = self.set_tmatrix_interblock(
+            tmatrix,vec._Z,self.cube.zneg,self.cube.zpos)
 
         return tmatrix
 
-    def tcharge(self,axis:str,tmatrix:csr,phase):
-        """
-        Returns updated transmissibility matrix:
+    def get_gvector(self,vec,tmatrix):
+        """Returns G vector filled with gravity coefficients."""
+        gvector = vec.fluid._rho*9.807*tmatrix.dot(vec.rrock._depth)
+        
+        return gvector
 
-        axis    : x, y, or z
+    def get_jmatrix(self,vec):
+        """Returns J matrix filled with constant pressure coefficients."""
 
-        tmatrix : csr_matrix object defined for transmissibility matrix
+        jmatrix = csr(self.matrix)
 
-        The transmissibility matrix is updated for diagonal and offset entries.
-        """
+        for vals,cond in zip(vec._W,self.wconds):
+            jmatrix += self.set_jmatrix_constraint(jmatrix,vals,cond)
 
-        stat = getattr(self,f"_static{axis}")
+        for vals,cond in zip(vec._B,self.bconds):
+            jmatrix += self.set_jmatrix_constraint(jmatrix,vals,cond)
 
-        vals = stat/phase._viscosity
+        return jmatrix
 
-        dneg = getattr(self.grid,f"{axis}neg")
-        dpos = getattr(self.grid,f"{axis}pos")
+    def get_qvector(self,vec):
+        """Returns Q vector filled with constant rate and pressure coefficients."""
+
+        qvector = csr(self.vector)
+
+        for vals,cond in zip(vec._W,self.wconds):
+            qvector += self.set_qvector_constraint(qvector,vals,cond)
+
+        for vals,cond in zip(vec._B,self.bconds):
+            qvector += self.set_qvector_constraint(qvector,vals,cond)
+
+        return qvector
+
+    @staticmethod
+    def set_tmatrix_interblock(tmatrix:csr,vals,dneg,dpos):
+        """Returns updated T matrix."""
 
         tmatrix += csr((vals,(dneg,dneg)),shape=tmatrix.shape)
         tmatrix -= csr((vals,(dneg,dpos)),shape=tmatrix.shape)
@@ -56,70 +89,36 @@ class Build():
 
         return tmatrix
 
-    def Smatrix(self):
-        """
-        Sets S matrix filled with pore volume values.
-        """
-        storage = self.grid._volume*self.grid._poro
+    @staticmethod
+    def set_jmatrix_constraint(jmatrix:csr,vals,cond):
+        """Returns updated J matrix."""
 
-        return diags(storage.flatten())
-
-    def Gvector(self,phase):
-        """
-        Sets G vector filled with dynamic gravity coefficients.
-        """
-        return phase._density*self._gravity*self._Tmatrix.dot(self.grid._depth)
-
-    def Jmatrix(self,phase):
-        """
-        Sets J matrix filled with dynamic constant pressure coefficients.
-        """
-
-        jmatrix = csr(self.matrix)
-
-        for index,wcond in enumerate(self.wconds):
-            jmatrix += self.jcharge(wcond,self._staticw[index],phase,jmatrix)
-
-        for index,bcond in enumerate(self.bconds):
-            jmatrix += self.jcharge(bcond,self._staticb[index],phase,jmatrix)
+        if cond.sort=="press":
+            jmatrix += csr((vals,(cond.block,cond.block)),shape=jmatrix.shape)
 
         return jmatrix
 
-    def jcharge(self,cond,static,phase,jmatrix:csr):
+    @staticmethod
+    def set_qvector_constraint(qvector:csr,vals,cond):
+        """Returns updated Q vector."""
 
         if cond.sort=="press":
-
-            jvalues = 2*static/phase._viscosity
-            jmatrix += csr((jvalues,(cond.block,cond.block)),shape=self.matrix)
-
-        return jmatrix
-
-    def Qvector(self,phase):
-        """
-        Sets Q vector filled with dynamic constant rate and pressure coefficients.
-        """
-
-        qvector = csr(self.vector)
-
-        for index,wcond in enumerate(self.wconds):
-            qvector += self.qcharge(wcond,self._staticw[index],phase,qvector)
-
-        for index,bcond in enumerate(self.bconds):
-            qvector += self.qcharge(bcond,self._staticb[index],phase,qvector)
-
-        return qvector
-
-    def qcharge(self,cond,static,phase,qvector:csr):
-
-        tvalues = static/phase._viscosity
-
-        if cond.sort=="press":
-            qvalues = 2*tvalues*cond._cond
+            qvals = vals*cond._cond
         else:
-            qvalues = tvalues/tvalues.sum()*cond._cond
+            qvals = vals/vals.sum()*cond._cond
 
-        indices = numpy.zeros(cond.block.size)
-
-        qvector += csr((qvalues,(cond.block,indices)),shape=self.vector)
+        qvector += csr((qvals,(cond.block,numpy.zeros(cond.block.size))),shape=qvector.shape)
 
         return qvector
+
+    @property
+    def matrix(self):
+        """Returns the shape of matrices in the flow calculations."""
+        return (self.edge.shape[0],self.edge.shape[0])
+
+    @property
+    def vector(self):
+        """Returns the shape of vectors in the flow calculations."""
+        return (self.edge.shape[0],1)
+    
+    

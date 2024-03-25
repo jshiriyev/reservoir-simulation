@@ -2,44 +2,62 @@ import numpy
 
 class Time():
 
-	def __init__(self,step:float,total:float=None,nstep:int=1):
-		"""Defining the numerical time settings
+	def __init__(self,start:float,total:float):
+		"""Defining the time settings for the simulator
 
-		step    : time step defined in days
+		start   : first time step defined in days
 		total   : total simulation time defined in days
-		nstep   : number of total time steps
 		"""
 
-		self._step = step*24*60*60
+		self._start = start*24*60*60
+		self._total = total*24*60*60
 
-		if total is None:
-			self._total = self._tstep*nstep
-			self._nstep = nstep
-		else:
-			self._total = total*24*60*60
-			self._nstep = int(self._total/self._step)
+	def set_times(self,method="linspace",**kwargs):
 
-		self._time = self.uniform()
+		self._times = getattr(self,method)(**kwargs)
 
-	def uniform(self):
-		return numpy.arange(
-			self._step,self._total+self._step/2,self._step)
+		self._steps = self.get_steps(self._times)
+
+	def linspace(self,nums=None):
+		"""linearly spaced time data"""
+		if nums is None:
+			return numpy.arange(
+				self._start,self._total+self._start/2,self._start)
+
+		return numpy.linspace(
+			self._start,self._total,nums)
+
+	def logspace(self,nums=50):
+		"""logarithmicly spaced time data"""
+		return numpy.logspace(
+			numpy.log10(self._start),numpy.log10(self._total),nums)
 
 	@property
-	def step(self):
-		return self._step/(24*60*60)
+	def start(self):
+		return self._start/(24*60*60)
 
 	@property
 	def total(self):
 		return self._total/(24*60*60)
 
 	@property
-	def nstep(self):
-		return self._nstep
-	
+	def times(self):
+		return self._times/(24*60*60)
+
 	@property
-	def time(self):
-		return self._time/(24*60*60)
+	def steps(self):
+		return self._steps/(24*60*60)
+
+	@property
+	def nums(self):
+		return self._times.size
+	
+	@staticmethod
+	def get_steps(times):
+		"""Returns the time steps in the given time array."""
+		prev_times = numpy.roll(times,1)
+		prev_times[0] = 0
+		return times-prev_times
 
 if __name__ == "__main__":
 

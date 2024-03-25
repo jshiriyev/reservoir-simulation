@@ -1,9 +1,11 @@
-import numpy
+from numpy import ndarray
 
 class Vector():
 
-    def __init__(self,S:numpy.ndarray,X:numpy.ndarray,Y:numpy.ndarray,Z:numpy.ndarray,W:list,B:list):
+    def __init__(self,rrock,fluid,S:ndarray,X:ndarray,Y:ndarray,Z:ndarray,W:list,B:list):
         """
+        Initialized vector interface with rrock and fluid properties,
+        and the following items:
         
         S   : Storage Vector in SI units, (m**3)
 
@@ -18,39 +20,31 @@ class Vector():
 
         A   : Accumulation term (pore_volume)/(time_step)
               in SI units, (m**3)/(sec)
-        C   : A.dot(c) in SI units, (m**3)/(Pa*sec)
+        C   : Accumulation times total compressibility term
+              in SI units, (m**3)/(Pa*sec)
         """
 
-        self._S = S
+        self.rrock = rrock # pressure updated rrock properties
+        self.fluid = fluid # pressure updated fluid properties
 
-        self._X = X
-        self._Y = Y
-        self._Z = Z
+        self._S = S # storage
 
-        self._W = W
-        self._B = B
+        self._X = X # x-transmissibility
+        self._Y = Y # y-transmissibility
+        self._Z = Z # z-transmissibility
+
+        self._W = W # well transmissibility
+        self._B = B # boundary transmissibility
 
     def set_A(self,tstep):
-        """Sets (pore_volume)/(time_step).
+        """Sets accumulation vector for the class.
         tstep   : time step in the numerical calculations, sec"""
         self._A = self.get_A(self._S,tstep)
 
     def set_C(self,tcomp):
-        """Sets A.dot(c) in sparse matrix form.
+        """Sets accumulation times total compressibility for the class.
         tcomp   : total compressibility in SI units, 1/Pa"""
         self._C = self.get_C(self._A,tcomp)
-
-    @staticmethod
-    def get_A(S,t):
-        """Returns (pore_volume)/(time_step).
-        t   : time step in the numerical calculations, sec"""
-        return S/t
-
-    @staticmethod
-    def get_C(A,c):
-        """Returns A.dot(c) in sparse matrix form.
-        c   : total compressibility in SI units, 1/Pa"""
-        return A*c
 
     @property
     def S(self):
@@ -81,3 +75,15 @@ class Vector():
     def Z(self):
         """Converting from SI Units to Oil Field Units."""
         return self._Z*(3.28084**3)*(24*60*60)*6894.76
+
+    @staticmethod
+    def get_A(storage,tstep):
+        """Returns the accumulation vector for a given storage vector.
+        tstep   : time step in the numerical calculations, sec"""
+        return storage/tstep
+
+    @staticmethod
+    def get_C(accumulation,tcomp):
+        """Returns accumulation times total compressibility vector.
+        tcomp   : total compressibility in SI units, 1/Pa"""
+        return accumulation*tcomp
