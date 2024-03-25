@@ -41,9 +41,13 @@ class Vector():
         tstep   : time step in the numerical calculations, sec"""
         self._A = self.get_A(self._S,tstep)
 
-    def set_C(self,tcomp):
+    def set_C(self,tcomp=None):
         """Sets accumulation times total compressibility for the class.
         tcomp   : total compressibility in SI units, 1/Pa"""
+
+        if tcomp is None:
+            tcomp = self.rrock._comp+self.fluid._comp
+        
         self._C = self.get_C(self._A,tcomp)
 
     @property

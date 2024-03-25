@@ -152,6 +152,7 @@ class Block():
         ky = rrock._yperm[wcond.block]
         kz = rrock._zperm[wcond.block]
 
+        #fluid mobility calculations
         fm = fpart._mobil[wcond.block]
 
         if wcond.axis == "x":
@@ -211,3 +212,8 @@ class Block():
         quar12 = numpy.power(perm1/perm2,1/4)
 
         return 0.28*numpy.sqrt(sqrt21+sqrt12)/(quar21+quar12)
+
+    @property
+    def static(self):
+        return (callable(self.rrock),callable(self.fluid))
+    

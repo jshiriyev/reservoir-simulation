@@ -1,3 +1,5 @@
+import numpy
+
 class ResRock():
 	"""
 	Base class that defines constant reservoir rock properties
@@ -14,13 +16,13 @@ class ResRock():
 
 		"""
 
-		self._poro  = poro
+		self._poro  = self.set_prop(poro)
 
-		self._depth = None if depth is None else depth*0.3048
+		self._depth = self.set_prop(depth,0.3048)
 
-		self._comp  = None if comp is None else comp/6894.75729
+		self._comp  = self.set_prop(comp,1/6894.75729)
 
-	def set_perm(self,xperm,yperm=None,zperm=None,yreduce=1.,zreduce=1.):
+	def set_perm(self,xperm,yperm=None,zperm=None,yreduce:float=1.,zreduce:float=1.):
 		"""Assigns the permeability values in mD to the grids.
 
 		xperm   : permeability in x direction, mD
@@ -32,37 +34,42 @@ class ResRock():
 
 		"""
 
-		self._xperm = xperm*9.869233e-16
+		self._xperm = self.set_prop(xperm,9.869233e-16)
 
-		self._yperm = self._xperm*yreduce if yperm is None else yperm
-		self._zperm = self._xperm*zreduce if zperm is None else zperm
+		self._yperm = self._xperm*yreduce if yperm is None else self.set_prop(yperm,9.869233e-16)
+		self._zperm = self._xperm*zreduce if zperm is None else self.set_prop(zperm,9.869233e-16)
 
-	@parameter
+	@property
 	def poro(self):
 		return self._poro
 
-	@parameter
+	@property
 	def depth(self):
 		if self._depth is not None:
 			return self._depth/0.3048
 
-	@parameter
+	@property
 	def comp(self):
 		if self._comp is not None:
 			return self._comp*6894.75729
 
-	@parameter
+	@property
 	def xperm(self):
 		if self._xperm is not None:
 			return self._xperm/9.869233e-16
 
-	@parameter
+	@property
 	def yperm(self):
 		if self._yperm is not None:
 			return self._yperm/9.869233e-16
 
-	@parameter
+	@property
 	def zperm(self):
 		if self._zperm is not None:
 			return self._zperm/9.869233e-16
+
+	@staticmethod
+	def set_prop(prop,conv=1.):
+		if prop is not None:
+			return numpy.asarray(prop).astype(numpy.float_)*conv
 
