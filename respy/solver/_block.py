@@ -10,147 +10,147 @@ from respy.solver._rcube import RecCube
 
 from respy.solver._vector import Vector
 
-class Block():
+class Block(RecCube):
 
-    def __init__(self,grid,wconds,bconds):
+    def __init__(self,grid,wconds,bconds,depth=None):
         """Initialization of block calculation class."""
 
-        # cell geometry
-        self.grid   = grid
+        # grid interface
+        object.__setattr__(self,"grid",grid)
 
-        # well and boundary conditions
-        self.wconds = wconds
-        self.bconds = bconds
-        
-        # rectangular cuboid for block calculations
-        self.cube  = self.get_rcube(grid)
+        # initializing the parent class
+        super().__init__(*grid(),depth=depth)
 
-    def __call__(self,press,rrock,fluid):
+        # well and boundary condition interfaces
+        object.__setattr__(self,"wconds",wconds)
+        object.__setattr__(self,"bconds",bconds)
+
+    def __call__(self,rrock,fluid):
         """Returns pressure updated Vector instance."""
 
-        # 1. Rock calculations: a) storage, b) flow capacity, and c) face hydraulic mean
-        rpvol = self.get_rpvol(rrock) # rock pore volume
-        rcell = self.get_rcell(rrock) # rock cell transmissibility
-        rmean = self.get_rmean(rcell) # rock mean transmissibility
+        # 1. Rock calculations
+        rcell = self.get_rcell(rrock) # rock storage and flow capacity
 
-        # 2. Fluid calculations: a) mobility, b) potential, and c) face upwinding
-        fcell = self.get_fcell(fluid) # fluid cell mobility
-        fppot = self.get_fppot(fluid,press) # fluid cell potential
-        fmean = self.get_fmean(fcell,fppot) # fluid mean mobility
+        # 2. Fluid calculations
+        fcell = self.get_fcell(fluid) # mobility and potential
 
-        # 3. Face transmissibility calculations
-        xvect = rmean._xface*fmean._xface
-        yvect = rmean._yface*fmean._yface
-        zvect = rmean._zface*fmean._zface
+        # 3. Inter-block transmissibility calculations
+        rmean = self.get_rmean(rcell) # inter-block mean rock transmissibility
+        fmean = self.get_fmean(fcell) # inter-block mean fluid mobility
+        tmean = self.get_tmean(rmean,fmean) # inter-block mean transmissibility
 
         # 4. Well block calculations
-        wvect = [self.get_wpart(rrock,fcell,wcond) for wcond in self.wconds]
+        wvect = [self.get_wvect(rrock,fcell,wcond) for wcond in self.wconds]
 
         # 5. Boundary block calculations
-        bvect = [self.get_bpart(rcell,fcell,bcond) for bcond in self.bconds]
+        bvect = [self.get_bvect(rcell,fcell,bcond) for bcond in self.bconds]
 
-        return Vector(rpvol,xvect,yvect,zvect,wvect,bvect)
-
-    def get_rpvol(self,rrock):
-        """returns rock pore volume"""
-        return self.cube._volume*rrock._poro
+        return Vector(rcell.pvol,*tmean,wvect,bvect)
 
     def get_rcell(self,rrock):
-        """returns rock transmissibility term"""
+        """Returns rock cell transmissibility."""
 
+        pvol = self.get_rpvol(rrock)
         xdir = self.get_rxdir(rrock)
         ydir = self.get_rydir(rrock)
         zdir = self.get_rzdir(rrock)
 
-        return block(xdir=xdir,ydir=ydir,zdir=zdir)
+        return block(pvol=pvol,xdir=xdir,ydir=ydir,zdir=zdir)
+
+    def get_rpvol(self,rrock):
+        """Returns rock pore volume."""
+        return self.volume*rrock._poro
 
     def get_rxdir(self,rrock):
-        """returns rock x-transmissibility term"""
-        return (rrock._xperm*self.cube._xarea)/(self.cube._xedge)
+        """Returns rock cell transmissibility in x-direction."""
+        return (rrock._xperm*self.xarea)/(self.xedge)
 
     def get_rydir(self,rrock):
-        """returns rock y-transmissibility term"""
-        return (rrock._yperm*self.cube._yarea)/(self.cube._yedge)
+        """Returns rock cell transmissibility in y-direction."""
+        return (rrock._yperm*self.yarea)/(self.yedge)
 
     def get_rzdir(self,rrock):
-        """returns rock z-transmissibility term"""
-        return (rrock._zperm*self.cube._zarea)/(self.cube._zedge)
+        """Returns rock cell transmissibility in z-direction."""
+        return (rrock._zperm*self.zarea)/(self.zedge)
 
-    def get_rmean(self,rbloc):
-        """returns rock face (inter-block) transmissibility term"""
+    def get_rmean(self,rcell):
+        """Returns rock inter-block transmissibility term"""
 
         xface = self.get_harmonic_mean(
-            rbloc._xdir[self.grid.xneg],
-            rbloc._xdir[self.grid.xpos],
-            )
+            rcell.xdir[self.grid.xneg],
+            rcell.xdir[self.grid.xpos])
 
         yface = self.get_harmonic_mean(
-            rbloc._ydir[self.grid.yneg],
-            rbloc._ydir[self.grid.ypos],
-            )
+            rcell.ydir[self.grid.yneg],
+            rcell.ydir[self.grid.ypos])
 
         zface = self.get_harmonic_mean(
-            rbloc._zdir[self.grid.zneg],
-            rbloc._zdir[self.grid.zpos],
-            )
+            rcell.zdir[self.grid.zneg],
+            rcell.zdir[self.grid.zpos])
 
         return block(xface=xface,yface=yface,zface=zface)
 
     def get_fcell(self,fluid,rperm=1):
-        """returns fluid mobility term"""
+        """Returns fluid cell potential and mobility terms."""
 
-        mobil = numpy.empty(self.cube._volume)
+        # hydrostatic head calculations
+        hhead = 0 if self.depth is None else fluid._rho*9.807*self.depth
 
+        # fluid phase potential calculations
+        power = fluid._press+hhead
+
+        # fluid phase mobility initialization
+        mobil = numpy.empty(self.shape)
+
+        # fluid phase mobility calculations
         mobil[:] = (rperm)/(fluid._visc*fluid._fvf)
 
-        return block(mobil=mobil)
+        return block(power=power,mobil=mobil)
 
-    def get_fppot(self,fluid,press):
-        """returns fluid phase potential in the cell"""
-        return press+fluid._rho*9.807*self.rrock._depth
+    def get_fmean(self,fcell):
+        """Returns fluid mobility term after upwinding"""
 
-    def get_fmean(self,fpart,fppot):
-        """returns fluid mobility term after upwinding"""
-        mobil = fpart._mobil
+        xface = self.get_upwinding_mean(
+            fcell.mobil[self.grid.xneg],
+            fcell.power[self.grid.xneg],
+            fcell.mobil[self.grid.xpos],
+            fcell.power[self.grid.xpos])
 
-        fpart._xface = self.get_upwinding_mean(
-            mobil[self.grid.xneg],
-            mobil[self.grid.xpos],
-            fppot[self.grid.xneg],
-            fppot[self.grid.xpos],
-            )
+        yface = self.get_upwinding_mean(
+            fcell.mobil[self.grid.yneg],
+            fcell.power[self.grid.yneg],
+            fcell.mobil[self.grid.ypos],
+            fcell.power[self.grid.ypos])
 
-        fpart._yface = self.get_upwinding_mean(
-            mobil[self.grid.yneg],
-            mobil[self.grid.ypos],
-            fppot[self.grid.yneg],
-            fppot[self.grid.ypos],
-            )
+        zface = self.get_upwinding_mean(
+            fcell.mobil[self.grid.zneg],
+            fcell.power[self.grid.zneg],
+            fcell.mobil[self.grid.zpos],
+            fcell.power[self.grid.zpos])
 
-        fpart._zface = self.get_upwinding_mean(
-            mobil[self.grid.zneg],
-            mobil[self.grid.zpos],
-            fppot[self.grid.zneg],
-            fppot[self.grid.zpos],
-            )
+        return block(xface=xface,yface=yface,zface=zface)
 
-        return fpart
+    def get_tmean(self,rmean,fmean):
 
-    def get_wpart(self,rrock,fpart,wcond):
+        xvect = rmean.xface*fmean.xface
+        yvect = rmean.yface*fmean.yface
+        zvect = rmean.zface*fmean.zface
+
+        return (xvect,yvect,zvect)
+
+    def get_wvect(self,rrock,fcell,wcond):
         """Returns well transmissibility values for the given well condition."""
 
-        rcube = self.cube
-
-        dx = rcube.xedge[wcond.block]
-        dy = rcube.yedge[wcond.block]
-        dz = rcube.zedge[wcond.block]
+        dx = self.xedge[wcond.block]
+        dy = self.yedge[wcond.block]
+        dz = self.zedge[wcond.block]
 
         kx = rrock._xperm[wcond.block]
         ky = rrock._yperm[wcond.block]
         kz = rrock._zperm[wcond.block]
 
-        #fluid mobility calculations
-        fm = fpart._mobil[wcond.block]
+        #fluid mobility values for the well blocks
+        fm = fcell.mobil[wcond.block]
 
         if wcond.axis == "x":
             dhk = dx*numpy.sqrt(ky*kz)
@@ -164,27 +164,16 @@ class Block():
 
         return (2*numpy.pi*dhk)*fm/(numpy.log(req/wcond.radius)+wcond.skin)
 
-    def get_bpart(self,rpart,fpart,bcond):
+    def get_bvect(self,rcell,fcell,bcond):
         """Returns exterior block transmissibility values for the
         given boundary condition."""
 
-        if bcond.face[0] == 'x':
-            rrock = rpart._xdir
-        elif bcond.face[0] == 'y':
-            rrock = rpart._ydir
-        elif bcond.face[0] == 'z':
-            rrock = rpart._zdir
-
+        rock = getattr(rcell,f"{bcond.face[0]}dir")
         rows = getattr(self.grid,bcond.face)
 
-        return rrock[rows]*fpart._mobil[rows]
+        return rock[rows]*fcell.mobil[rows]
 
     """Static methods:"""
-
-    @staticmethod
-    def get_rcube(grid):
-        """Returns an instance of RecCube."""
-        return RecCube(*grid())
 
     @staticmethod
     def get_weighted_mean(term1,term2):
@@ -202,12 +191,12 @@ class Block():
         return numpy.sqrt(term1*term2)
 
     @staticmethod
-    def get_upwinding_mean(term1,term2,phi1,phi2):
+    def get_upwinding_mean(term1,ppot1,term2,ppot2):
         """Returns upwinding mean of two terms, term1 and term 2
-        for the given potential values, phi1 and phi2."""
+        for the given phase potential values, ppot1 and ppot2."""
         term = term1.copy()
 
-        term[phi1<phi2] = term2
+        term[ppot1<ppot2] = term2
 
         return term
 

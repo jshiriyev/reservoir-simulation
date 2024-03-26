@@ -55,15 +55,24 @@ class OnePhase():
     def __call__(self,press,tstep,tcomp=None):
 
         # updating rock and fluid properties with input pressure values
-        rrock = self.rrock(press) if callable(self.rrock) else self.rrock
-        fluid = self.fluid(press) if callable(self.fluid) else self.fluid
+        if callable(self.rrock):
+            rrock = self.rrock(press)
+        else:
+            rrock = self.rrock
+            rrock._press = press
 
-        vec = self.block(press,rrock,fluid)
+        if callable(self.fluid):
+            fluid = self.fluid(press)
+        else:
+            fluid = self.fluid
+            fluid._press = press
+
+        vec = self.block(rrock,fluid)
 
         vec.set_A(tstep)
         vec.set_C(tcomp)
 
-        mat = self.build(press,rrock,fluid,vec)
+        mat = self.build(rrock,fluid,vec)
 
         return mat
 

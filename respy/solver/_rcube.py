@@ -1,17 +1,30 @@
+import sys
+
+if __name__ == "__main__":
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
 import numpy
 
+from numpy import ndarray
+
 class RecCube():
-	"""Reservoir Cuboid class"""
+	"""Rectangular Cuboid class"""
 
-	def __init__(self,edge:numpy.ndarray,plat:numpy.ndarray,rows:numpy.ndarray=None,**kwargs):
+	def __init__(self,edge:ndarray,plat:ndarray,rows:ndarray=None,prop:set=None,**kwargs):
 		"""
-		Reservoir Cuboid class holding cell properties:
+		Rectangular Cuboid class holding cell properties:
 		
-		edge 	: edge size of each grid, (N,3) numpy.ndarray
-		plat 	: neighboring indices, (N,2*dims) numpy.ndarray where dims is 1, 2, or 3
-		rows 	: indices of cells, (N,) flat numpy.ndarray
+		edge 	: edge size of each grids, (nums,3)
+		
+		plat 	: neighbour indices, (nums,2*dims) where
+				  dims is the flow dimensions, it can be 1, 2, or 3
+		
+		rows 	: indices of cells, (nums,)
 
-		The value of kwargs should be flat array of numpy.ndarray of size N or 1.
+		prop 	: a set containing names of the cell properties
+
+		**kwargs contains any key-value pair for cell properties.
 
 		"""
 
@@ -24,13 +37,16 @@ class RecCube():
 				)
 
 		object.__setattr__(self,"rows",rows)
-		object.__setattr__(self,"prop",set())
+
+		if prop is None:
+			prop = {"edge","plat","rows","prop"}
+
+		object.__setattr__(self,"prop",prop)
 
 		for key,value in kwargs.items():
 			self.__setattr__(key,value)
 
 	def __setattr__(self,key,value):
-		"""The value should be flat array of numpy.ndarray of size N or 1"""
 
 		object.__setattr__(self,key,value)
 		
@@ -44,19 +60,23 @@ class RecCube():
 
 			prop = getattr(self,item)
 
-			if callable(prop):
+			if not hasattr(prop,"shape"):
 				kwargs[item] = prop
-			elif prop.size>1 or self.rows.size<=1:
-				kwargs[item] = prop[key]
+			elif prop.shape[0]==self.rows.size:
+				kwargs[item] = prop[key,]
 			else:
 				kwargs[item] = prop
 
-		return RecCube(self.edge[key],self.plat[key],self.rows[key],**kwargs)
+		return RecCube(**kwargs)
+
+	@property
+	def shape(self):
+		return (self.rows.size,)
 
 	@property
 	def dims(self):
 		return self.plat.shape[1]//2
-
+	
 	@property
 	def xedge(self):
 		return self.edge[:,0]
@@ -163,53 +183,54 @@ class RecCube():
 
 if __name__ == "__main__":
 
-	vol = RecCube(
-		numpy.array([[1,3,3],[1,2,3],[1,7,3],[1,5,3]]),
-		numpy.array([[0,1],[0,2],[1,3],[2,3]]),
+	cube = RecCube(
+		edge=numpy.array([[1,3,3],[2,3,3],[5,3,3],[7,3,3]]),
+		plat=numpy.array([[0,1],[0,2],[1,3],[2,3]]),
 		perm=numpy.array((400,500,600,700)),
 		comp=numpy.array((1,)),
-		name=lambda x: x**2)
+		func=lambda x: x**2)
 
-	print(vol)
+	print(1,cube)
 
-	print(vol.xarea)
+	print(2,cube.xarea)
 
-	print(vol.xmin.rows)
-	print(vol.xmax.rows)
-	print(vol.ymin.rows)
-	print(vol.ymax.rows)
-	print(vol.zmin.rows)
-	print(vol.zmax.rows)
+	print(3,cube.xmin.rows)
+	print(4,cube.xmax.rows)
+	print(5,cube.ymin.rows)
+	print(6,cube.ymax.rows)
+	print(7,cube.zmin)
+	print(8,cube.zmax)
 
-	print(vol.xpos.rows)
-	print(vol.xneg.rows)
-	print(vol.ypos.rows)
-	print(vol.yneg.rows)
-	print(vol.zpos.rows)
-	print(vol.zneg.rows)
+	print(9,cube.xpos.rows)
+	print(10,cube.xneg.rows)
+	print(11,cube.ypos.rows)
+	print(12,cube.yneg.rows)
+	print(13,cube.zpos.rows)
+	print(14,cube.zneg.rows)
 
-	print(vol[:2])
+	print(15,cube.prop)
+	print(15,cube.rows)
 
-	vol1 = vol[:2]
+	sub = cube[:2]
 
-	print(vol1.xmin.rows)
-	print(vol1.xmax.rows)
-	print(vol1.ymin.rows)
-	print(vol1.ymax.rows)
-	print(vol1.zmin.rows)
-	print(vol1.zmax.rows)
+	print(16,sub.xmin.rows)
+	print(17,sub.xmax.rows)
+	print(18,sub.ymin.rows)
+	print(19,sub.ymax.rows)
+	print(20,sub.zmin.rows)
+	print(21,sub.zmax.rows)
 
-	print(1,vol1.xpos.rows)
-	print(vol1.xneg.rows)
-	print(vol1.ypos.rows)
-	print(vol1.yneg.rows)
-	print(vol1.zpos.rows)
-	print(vol1.zneg.perm)
+	print(22,sub.xpos.rows)
+	print(23,sub.xneg.rows)
+	print(24,sub.ypos.rows)
+	print(25,sub.yneg.rows)
+	print(26,sub.zpos.rows)
+	print(27,sub.zneg.perm)
 
-	print(vol1.xarea)
+	print(28,sub.xarea)
 
-	print(vol1.perm)
+	print(29,sub.perm)
 
-	print(vol1.comp)
+	print(30,sub.comp)
 
-	print(vol1.name)
+	print(31,sub.func)

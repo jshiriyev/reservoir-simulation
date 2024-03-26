@@ -8,11 +8,11 @@ import numpy
 
 class Fluid():
     """
-    Base Class that defines constant fluid properties at the
+    A class that defines constant fluid properties at the
     given pressure and temperature.
     """
 
-    def __init__(self,visc=None,rho=None,comp=None,fvf=None):
+    def __init__(self,visc=None,rho=None,comp=None,fvf=None,press=None):
         """
         Initializes a fluid with certain viscosity, density,
         compressibility and formation volume factor:
@@ -21,15 +21,19 @@ class Fluid():
         rho     : density of fluid, lb/ft3
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
+        press   : pressure at which properties are defined; if it is None,
+                  properties are pressure independent, psi
 
         For any given pressure and temperature values.
 
         """
         
-        self._visc = self.set_prop(visc,0.001)
-        self._rho  = self.set_prop(rho,16.0185)
-        self._comp = self.set_prop(comp,1/6894.76)
-        self._fvf  = self.set_prop(fvf)
+        self._visc  = self.set_prop(visc,0.001)
+        self._rho   = self.set_prop(rho,16.0185)
+        self._comp  = self.set_prop(comp,1/6894.76)
+        self._fvf   = self.set_prop(fvf)
+
+        self._press = self.set_prop(press,6894.76)
 
     @property
     def visc(self):
@@ -44,11 +48,16 @@ class Fluid():
     @property
     def comp(self):
         if self._comp is not None:
-            return self._comp*6894.75729
+            return self._comp*6894.76
 
     @property
     def fvf(self):
         return self._fvf
+
+    @property
+    def press(self):
+        if self._press is not None:
+            return self._press/6894.76
 
     @staticmethod
     def set_prop(prop,conv=1.):
