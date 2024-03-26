@@ -1,3 +1,11 @@
+import sys
+
+if __name__ == "__main__":
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
+import numpy
+
 class Fluid():
     """
     Base Class that defines constant fluid properties at the
@@ -14,12 +22,14 @@ class Fluid():
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
 
+        For any given pressure and temperature values.
+
         """
         
-        self._visc = None if visc is None else visc*0.001
-        self._rho  = None if rho is None else rho*16.0185
-        self._comp = None if comp is None else comp/6894.75729
-        self._fvf  = fvf
+        self._visc = self.set_prop(visc,0.001)
+        self._rho  = self.set_prop(rho,16.0185)
+        self._comp = self.set_prop(comp,1/6894.76)
+        self._fvf  = self.set_prop(fvf)
 
     @property
     def visc(self):
@@ -40,17 +50,24 @@ class Fluid():
     def fvf(self):
         return self._fvf
 
+    @staticmethod
+    def set_prop(prop,conv=1.):
+        if prop is not None:
+            return numpy.asarray(prop).astype(numpy.float_)*conv
+
 if __name__ == "__main__":
 
     f = Fluid(5,5)
 
     print(f)
 
-    print(f(45,47))
-
     print(f.visc,f._visc)
-        
+    
+    print(f.visc.dtype)
 
+    print(f.comp)
+
+    print(callable(f))
 
 
     

@@ -1,6 +1,15 @@
-class BoundCond():
+import sys
 
-    def __init__(self,face,**kwargs):
+if __name__ == "__main__":
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
+class BoundCond():
+    """
+    It is a boundary condition object used in the simulator.
+    """
+
+    def __init__(self,face,*,**kwargs):
         """
         face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
 
@@ -46,3 +55,5 @@ if __name__ == "__main__":
     bcond = BoundCond("xmin",press=500)
 
     print(bcond.cond)
+    print(bcond.face)
+    print(bcond.sort)

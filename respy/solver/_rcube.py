@@ -55,7 +55,7 @@ class RecCube():
 
 	@property
 	def dims(self):
-		return self.plat.shape[1]//2+1
+		return self.plat.shape[1]//2
 
 	@property
 	def xedge(self):
@@ -108,56 +108,56 @@ class RecCube():
 	@property
 	def ymin(self):
 		"""y-minimum boundary boolean"""
-		if self.dims>2:
+		if self.dims>1:
 			return self[self.rows==self.plat[:,2]]
 		return self
 
 	@property
 	def ypos(self):
 		"""y-positive neighbors boolean"""
-		if self.dims>2:
+		if self.dims>1:
 			return self[self.rows!=self.plat[:,2]]
 		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def yneg(self):
 		"""y-negative neighbors boolean"""
-		if self.dims>2:
+		if self.dims>1:
 			return self[self.rows!=self.plat[:,3]]
 		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def ymax(self):
 		"""y-maximum boundary boolean"""
-		if self.dims>2:
+		if self.dims>1:
 			return self[self.rows==self.plat[:,3]]
 		return self
 
 	@property
 	def zmin(self):
 		"""z-minimum boundary boolean"""
-		if self.dims>4:
+		if self.dims>2:
 			return self[self.rows==self.plat[:,4]]
 		return self
 
 	@property
 	def zpos(self):
 		"""z-positive neighbors boolean"""
-		if self.dims>4:
+		if self.dims>2:
 			return self[self.rows!=self.plat[:,4]]
 		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def zneg(self):
 		"""z-negative neighbors boolean"""
-		if self.dims>4:
+		if self.dims>2:
 			return self[self.rows!=self.plat[:,5]]
 		return self[numpy.full(self.rows.shape,False)]
 
 	@property
 	def zmax(self):
 		"""z-maximum boundary boolean"""
-		if self.dims>4:
+		if self.dims>2:
 			return self[self.rows==self.plat[:,5]]
 		return self
 

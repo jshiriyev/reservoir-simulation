@@ -2,7 +2,7 @@ import numpy
 
 class Time():
 
-	def __init__(self,start:float,total:float):
+	def __init__(self,start:float,total:float,**kwargs):
 		"""Defining the time settings for the simulator
 
 		start   : first time step defined in days
@@ -12,14 +12,16 @@ class Time():
 		self._start = start*24*60*60
 		self._total = total*24*60*60
 
-	def set_times(self,method="linspace",**kwargs):
+		self.set_times(**kwargs)
 
+	def set_times(self,method="linspace",**kwargs):
+		"""Sets time steps for reservoir simulation."""
 		self._times = getattr(self,method)(**kwargs)
 
 		self._steps = self.get_steps(self._times)
 
 	def linspace(self,nums=None):
-		"""linearly spaced time data"""
+		"""Returns linearly spaced time data."""
 		if nums is None:
 			return numpy.arange(
 				self._start,self._total+self._start/2,self._start)
@@ -28,7 +30,7 @@ class Time():
 			self._start,self._total,nums)
 
 	def logspace(self,nums=50):
-		"""logarithmicly spaced time data"""
+		"""Returns logarithmically spaced time data."""
 		return numpy.logspace(
 			numpy.log10(self._start),numpy.log10(self._total),nums)
 
@@ -51,6 +53,8 @@ class Time():
 	@property
 	def nums(self):
 		return self._times.size
+
+	"""Static methods:"""
 	
 	@staticmethod
 	def get_steps(times):
@@ -61,6 +65,8 @@ class Time():
 
 if __name__ == "__main__":
 
-	t = Time(0.1,10)
+	t = Time(0.1,10,method='logspace')
 
-	print(t.step)
+	print(t.steps)
+
+	print(t.steps.sum())

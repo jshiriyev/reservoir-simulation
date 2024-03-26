@@ -1,51 +1,38 @@
 import sys
 
-import numpy
-
 if __name__ == "__main__":
+	# sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
 	sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
+import numpy
 
 class GridDelta():
 
 	def __init__(self,xdelta:tuple,ydelta:tuple,zdelta:tuple,dims=None):
-		"""Three-dimensional rectangular cuboid initialized with:
+		"""
+		Three-dimensional rectangular cuboid initialized with:
 
-		xdelta	: length of grids in ft, shape = (Nlength,)
-		ydelta	: width of grids in ft, shape = (Nwidth,)
-		zdelta	: height of grids in ft, shape = (Nheight,)
+		xdelta	: length of grids in ft, shape = (xnums,)
+		ydelta	: width of grids in ft, shape = (ynums,)
+		zdelta	: height of grids in ft, shape = (znums,)
 		
 		dims 	: flow dimension, determines the shape of plat.
 
-		Any kargs item should follow the size regulation.
-
-		The object has properties to calculate the control volume implementation.
+		The object has edge properties to calculate the control
+		volume implementation of flow calculations.
 		"""
 
-		self.xdelta = self.set_delta(xdelta)
-		self.ydelta = self.set_delta(ydelta)
-		self.zdelta = self.set_delta(zdelta)
+		self.xdelta = self.get_delta(xdelta)
+		self.ydelta = self.get_delta(ydelta)
+		self.zdelta = self.get_delta(zdelta)
 
-		self.dims = self.set_dims(dims)
+		self.__dims = dims
 
-	def set_delta(self,delta):
-
-		return numpy.asarray(delta).astype(numpy.float_)
-
-	def set_dims(self,dims):
-
-		if dims is not None:
-			return dims
-
-		if self.znums>1:
-			return 3
-
-		if self.ynums>1:
-			return 2
-
-		return 1
+	"""Properties essential for the visualization of results:"""
 
 	@property
-	def nums(self):
+	def nums3(self):
+		"""Returns tuple of (xnums,ynums,znums)."""
 		return (self.xnums,self.ynums,self.znums)
 
 	@property
@@ -61,41 +48,23 @@ class GridDelta():
 		return self.zdelta.size
 
 	@property
-	def numtot(self):
-		return numpy.prod(self.nums).item()
-
-	@property
 	def length(self):
+		"""Returns the size of reservoir in x-direction."""
 		return self.xdelta.sum()
 
 	@property
 	def width(self):
+		"""Returns the size of reservoir in y-direction."""
 		return self.ydelta.sum()
 
 	@property
 	def height(self):
+		"""Returns the size of reservoir in z-direction."""
 		return self.zdelta.sum()
-	
-	@property
-	def edge(self):
-		return numpy.concatenate((self.xedge,self.yedge,self.zedge),axis=1)
-
-	@property
-	def xedge(self):
-		return numpy.tile(self.xdelta,self.ynums*self.znums).reshape((-1,1))
-	
-	@property
-	def yedge(self):
-		return numpy.tile(
-			numpy.repeat(self.ydelta,self.xnums),self.znums).reshape((-1,1))
-	
-	@property
-	def zedge(self):
-		return numpy.repeat(self.zdelta,self.xnums*self.ynums).reshape((-1,1))
 
 	@property
 	def xcenter(self):
-
+		"""Returns the x-center of the grids, shape = (xnums,)"""
 		side2 = numpy.cumsum(self.xdelta)
 		side1 = numpy.roll(side2,1)
 
@@ -105,7 +74,7 @@ class GridDelta():
 
 	@property
 	def ycenter(self):
-
+		"""Returns the y-center of the grids, shape = (ynums,)"""
 		side2 = numpy.cumsum(self.ydelta)
 		side1 = numpy.roll(side2,1)
 
@@ -115,7 +84,7 @@ class GridDelta():
 
 	@property
 	def zcenter(self):
-
+		"""Returns the z-center of the grids, shape = (znums,)"""
 		side2 = numpy.cumsum(self.zdelta)
 		side1 = numpy.roll(side2,1)
 
@@ -123,12 +92,64 @@ class GridDelta():
 
 		return (side1+side2)/2
 
+	"""Properties essential for the flow simulation:"""
+
+	def __call__(self):
+
+		edge = self.edge*0.3048
+		plat = self.plat
+		rows = self.rows
+
+		return (edge,plat,rows)
+
+	@property
+	def nums(self):
+		"""Returns total number of grids."""
+		return numpy.prod(self.nums3).item()
+
+	@property
+	def dims(self):
+		"""Returns the flow dimensions."""
+		return self.get_dims(dims=self.__dims,nums3=self.nums3)
+	
+	@property
+	def edge(self):
+		"""Returns the size of edges in x, y, and z direction, shape = (nums,3)."""
+
+		x = self.xedge.reshape((-1,1))
+		y = self.yedge.reshape((-1,1))
+		z = self.zedge.reshape((-1,1))
+
+		return numpy.concatenate((x,y,z),axis=1)
+
+	@property
+	def xedge(self):
+		"""Returns the size of edges in x-direction, shape = (nums,)."""
+		return numpy.tile(self.xdelta,self.ynums*self.znums)
+	
+	@property
+	def yedge(self):
+		"""Returns the size of edges in y-direction, shape = (nums,)."""
+		return numpy.tile(numpy.repeat(self.ydelta,self.xnums),self.znums)
+	
+	@property
+	def zedge(self):
+		"""Returns the size of edges in z-direction, shape = (nums,)."""
+		return numpy.repeat(self.zdelta,self.xnums*self.ynums)
+
+	@property
+	def rows(self):
+		return numpy.arange(self.nums,dtype=numpy.int_)
+	
 	@property
 	def plat(self):
+		"""Plat of grids that locates neighbor index information."""
 
 		dims = self.dims
 
-		Nx,Ny,Nz,index = *self.nums,numpy.arange(self.numtot)
+		Nx,Ny,Nz = self.xnums,self.ynums,self.znums
+
+		index = numpy.arange(self.nums)
 
 		plat = numpy.tile(index,(dims*2,1)).T
 
@@ -145,29 +166,176 @@ class GridDelta():
 
 		return plat
 
+	"""Essential indices for grids:"""
+
+	@property
+	def xmin(self):
+		"""x-minimum boundary indices"""
+		return self.rows[self.xminb]
+
+	@property
+	def xpos(self):
+		"""x-positive neighbors indices"""
+		return self.rows[self.xposb]
+
+	@property
+	def xneg(self):
+		"""x-negative neighbors indices"""
+		return self.rows[self.xnegb]
+
+	@property
+	def xmax(self):
+		"""x-maximum boundary indices"""
+		return self.rows[self.xmaxb]
+
+	@property
+	def ymin(self):
+		"""y-minimum boundary indices"""
+		return self.rows[self.yminb]
+
+	@property
+	def ypos(self):
+		"""y-positive neighbors indices"""
+		return self.rows[self.yposb]
+
+	@property
+	def yneg(self):
+		"""y-negative neighbors indices"""
+		return self.rows[self.ynegb]
+
+	@property
+	def ymax(self):
+		"""y-maximum boundary indices"""
+		return self.rows[self.ymaxb]
+
+	@property
+	def zmin(self):
+		"""z-minimum boundary indices"""
+		return self.rows[self.zminb]
+
+	@property
+	def zpos(self):
+		"""z-positive neighbors indices"""
+		return self.rows[self.zposb]
+
+	@property
+	def zneg(self):
+		"""z-negative neighbors indices"""
+		return self.rows[self.znegb]
+
+	@property
+	def zmax(self):
+		"""z-maximum boundary indices"""
+		return self.rows[self.zmaxb]
+
+	"""Essential booleans for grids:"""
+	
+	@property
+	def xminb(self):
+		"""x-minimum boundary boolean"""
+		return self.rows==self.plat[:,0]
+
+	@property
+	def xposb(self):
+		"""x-positive neighbors boolean"""
+		return self.rows!=self.plat[:,0]
+
+	@property
+	def xnegb(self):
+		"""x-negative neighbors boolean"""
+		return self.rows!=self.plat[:,1]
+
+	@property
+	def xmaxb(self):
+		"""x-maximum boundary boolean"""
+		return self.rows==self.plat[:,1]
+
+	@property
+	def yminb(self):
+		"""y-minimum boundary boolean"""
+		if self.dims>1:
+			return self.rows==self.plat[:,2]
+		return numpy.full(self.nums,True)
+
+	@property
+	def yposb(self):
+		"""y-positive neighbors boolean"""
+		if self.dims>1:
+			return self.rows!=self.plat[:,2]
+		return numpy.full(self.nums,False)
+
+	@property
+	def ynegb(self):
+		"""y-negative neighbors boolean"""
+		if self.dims>1:
+			return self.rows!=self.plat[:,3]
+		return numpy.full(self.nums,False)
+
+	@property
+	def ymaxb(self):
+		"""y-maximum boundary boolean"""
+		if self.dims>1:
+			return self.rows==self.plat[:,3]
+		return numpy.full(self.nums,True)
+
+	@property
+	def zminb(self):
+		"""z-minimum boundary boolean"""
+		if self.dims>2:
+			return self.rows==self.plat[:,4]
+		return numpy.full(self.nums,True)
+
+	@property
+	def zposb(self):
+		"""z-positive neighbors boolean"""
+		if self.dims>2:
+			return self.rows!=self.plat[:,4]
+		return numpy.full(self.nums,False)
+
+	@property
+	def znegb(self):
+		"""z-negative neighbors boolean"""
+		if self.dims>2:
+			return self.rows!=self.plat[:,5]
+		return numpy.full(self.nums,False)
+
+	@property
+	def zmaxb(self):
+		"""z-maximum boundary boolean"""
+		if self.dims>2:
+			return self.rows==self.plat[:,5]
+		return numpy.full(self.nums,True)
+
+	"""Static methods:"""
+
+	@staticmethod
+	def get_delta(delta):
+		"""Returns flat numpy.ndarray of float dtype."""
+		return numpy.asarray(delta).flatten().astype(numpy.float_)
+
+	@staticmethod
+	def get_dims(*,dims=None,nums3=None):
+		"""Returns flow dimensions that determines shape of plat."""
+
+		if dims is not None:
+			return dims
+
+		if nums3[2]>1:
+			return 3
+
+		if nums3[1]>1:
+			return 2
+
+		return 1
+
 if __name__ == "__main__":
 
 	grid = GridDelta((750,1000,1250),(750,1000,1250),(20,),)
 
-	# print(rcube.ymin)
-
-	# print(grid.cube.xarea)
-
-	# print(grid.xmin.rows)
-	# print(grid.xmin.perm)
-
 	print(grid.xcenter)
 
-	# print(grid.xmin)
-	# print(grid.xmax)
-	# print(grid.ymin)
-	# print(grid.ymax)
-	# print(grid.zmin)
-	# print(grid.zmax)
+	print(grid.xpos)
+	print(grid.xposb)
 
-	# print(grid.xpos)
-	# print(grid.xneg)
-	# print(grid.ypos)
-	# print(grid.yneg)
-	# print(grid.zpos)
-	# print(grid.zneg)
+	print(grid.zpos)
+	print(grid.zposb)

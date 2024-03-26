@@ -1,3 +1,9 @@
+import sys
+
+if __name__ == "__main__":
+	# sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+	sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
 import numpy
 
 class ResRock():
@@ -6,13 +12,17 @@ class ResRock():
 	at the given pressure and temperature.
 	"""
 
-	def __init__(self,poro=None,depth=None,comp=None):
+	def __init__(self,*args,poro=None,depth=None,comp=None,**kwargs):
 		"""
 		Initializes a reservoir rock with the following petrophysical parameters:
 		
 		poro    : porosity of the rock, dimensionless
 		depth 	: depth of reservoir rock, ft
 		comp 	: isothermal compressibility factor of rock, 1/psi
+		
+		*args and **kwargs goes to self.set_perm(*args,**kwargs)
+
+		For any given pressure and temperature values.
 
 		"""
 
@@ -20,12 +30,14 @@ class ResRock():
 
 		self._depth = self.set_prop(depth,0.3048)
 
-		self._comp  = self.set_prop(comp,1/6894.75729)
+		self._comp  = self.set_prop(comp,1/6894.76)
 
-	def set_perm(self,xperm,yperm=None,zperm=None,yreduce:float=1.,zreduce:float=1.):
+		self.set_perm(*args,**kwargs)
+
+	def set_perm(self,xperm,*,yperm=None,zperm=None,yreduce:float=1.,zreduce:float=1.):
 		"""Assigns the permeability values in mD to the grids.
 
-		xperm   : permeability in x direction, mD
+		xperm 	: permeability in x-direction, mD
 		yperm   : permeability in y direction, mD
 		zperm   : permeability in z direction, mD
 
@@ -72,4 +84,13 @@ class ResRock():
 	def set_prop(prop,conv=1.):
 		if prop is not None:
 			return numpy.asarray(prop).astype(numpy.float_)*conv
+
+if __name__ == "__main__":
+
+	rrock = ResRock((10,15,20),poro=(0.1,0.2,0.3),yreduce=0.5,zreduce=0.1)
+
+	print(rrock.xperm)
+	print(rrock.yperm)
+	print(rrock.zperm)
+	print(rrock.poro)
 

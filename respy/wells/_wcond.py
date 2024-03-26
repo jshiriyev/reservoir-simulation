@@ -1,18 +1,26 @@
+import sys
+
+if __name__ == "__main__":
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
 class WellCond():
     """
     It is a well condition object used in the simulator.
     """
 
-    def __init__(self,radius:float,block:tuple,axis:str="z",skin:float=0,start:float=0,stop:float=None,**kwargs):
+    def __init__(self,radius:float,*,block:tuple=None,axis:str="z",skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
         radius  : well radius, ft
+
         block   : block indices containing the well
+
         axis    : (z) vertical or (x,y) horizontal well
 
         skin    : skin factor of the well, dimensionless
 
-        start   : start time for implementing the condition, days
-        stop    : stop time for implementing the condition, days
+        start   : start time for implementing the well condition, days
+        stop    : stop time for implementing the well condition, days
 
         Assign only one of the following conditions:
 
@@ -23,9 +31,11 @@ class WellCond():
         """
 
         self._radius    = radius*0.3048
+
         self._block     = block
 
         self._axis      = axis
+
         self._skin      = skin
 
         self._start     = start*(24*60*60)

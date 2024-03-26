@@ -2,7 +2,7 @@ from numpy import ndarray
 
 class Vector():
 
-    def __init__(self,rrock,fluid,S:ndarray,X:ndarray,Y:ndarray,Z:ndarray,W:list,B:list):
+    def __init__(self,press,rrock,fluid,S:ndarray,X:ndarray,Y:ndarray,Z:ndarray,W:list,B:list):
         """
         Initialized vector interface with rrock and fluid properties,
         and the following items:
@@ -24,6 +24,8 @@ class Vector():
               in SI units, (m**3)/(Pa*sec)
         """
 
+        self._press = press # pressure values where properties are calculated
+
         self.rrock = rrock # pressure updated rrock properties
         self.fluid = fluid # pressure updated fluid properties
 
@@ -39,16 +41,18 @@ class Vector():
     def set_A(self,tstep):
         """Sets accumulation vector for the class.
         tstep   : time step in the numerical calculations, sec"""
-        self._A = self.get_A(self._S,tstep)
+        self._A,self._tstep = self.get_A(self._S,tstep),tstep
 
     def set_C(self,tcomp=None):
         """Sets accumulation times total compressibility for the class.
         tcomp   : total compressibility in SI units, 1/Pa"""
 
         if tcomp is None:
-            tcomp = self.rrock._comp+self.fluid._comp
-        
-        self._C = self.get_C(self._A,tcomp)
+            comp = self.rrock._comp+self.fluid._comp
+        else:
+            comp = numpy.asarray(tcomp).flatten()
+
+        self._C,self._tcomp = self.get_C(self._A,comp),tcomp
 
     @property
     def S(self):

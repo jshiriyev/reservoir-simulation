@@ -3,12 +3,13 @@ import sys
 if __name__ == "__main__":
     sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
 
-from respy.solver._cube import RecCube
-
 from respy.solver._time import Time
 
 from respy.solver._block import Block
 from respy.solver._build import Build
+
+from respy.solver._vector import Vector
+from respy.solver._matrix import Matrix
 
 class OnePhase():
     """
@@ -33,19 +34,38 @@ class OnePhase():
 
         """
 
+        self.rrock = rrock
+        self.fluid = fluid
+
+        wconds = () if wconds is None else wconds
+        bconds = () if bconds is None else bconds
+
         self.block = Block(
-              cube = RecCube(grid.edge,grid.plat),
-             rrock = rrock,
-             fluid = fluid,
-            wconds = () if wconds is None else wconds,
-            bconds = () if bconds is None else bconds,
+              grid = grid,
+            wconds = wconds,
+            bconds = bconds,
             )
 
         self.build = Build(
-              cube = self.block.cube,
-            wconds = self.block.wconds,
-            bconds = self.block.bconds,
+              grid = grid,
+            wconds = wconds,
+            bconds = bconds,
             )
+
+    def __call__(self,press,tstep,tcomp=None):
+
+        # updating rock and fluid properties with input pressure values
+        rrock = self.rrock(press) if callable(self.rrock) else self.rrock
+        fluid = self.fluid(press) if callable(self.fluid) else self.fluid
+
+        vec = self.block(press,rrock,fluid)
+
+        vec.set_A(tstep)
+        vec.set_C(tcomp)
+
+        mat = self.build(press,rrock,fluid,vec)
+
+        return mat
 
     def set_pzero(self,pzero=None,refp=None,grad=None):
         """Calculates the initial pressure
@@ -76,9 +96,9 @@ class OnePhase():
                 1/2 means Crank-Nicolson method
         """
 
-        Pn = self._pzero.copy()
+        Pn = numpy.copy(self._pzero)
 
-        self._press = numpy.zeros((self.block.cube.numtot,self.time.nums))
+        self._press = numpy.zeros(self.shape)
         
         for n,step in enumerate(self.time.steps):
 
@@ -96,18 +116,40 @@ class OnePhase():
 
             Pn = Pn.reshape((-1,1))
 
-    def get_matrix(self,press,tstep,tcomp):
+    def iterate(self,mat:Matrix,jacobian=None,maxiter=100,tol=1e-6):
 
-        vec = self.block(press)
+        Pn = numpy.copy(mat._P)
 
-        vec.set_A(tstep)
-        vec.set_C(tcomp)
+        Pk = numpy.copy(Pn)
 
-        return self.build(vec)
+        for k in range(maxiter):
+
+            Rv = mat.implicit_residual(Pn)
+
+            if jacobian is None:
+                Pk = mat.implicit_pressure(Pn)
+            else:
+                Jm = jacobian(Pk,tstep,tcomp)
+                Pk = Pk+np.linalg.solve(Jm,-Rv)
+                
+            error = np.linalg.norm(Rv,2)
+
+            print(f"{k:2}",f"{error:.5e}",Pk.flatten())
+
+            if np.linalg.norm(Rv,2)<tol:
+                break
+
+            mat = self.get_matrix(Pk,tstep,tcomp)
+
+        else:
+
+            print(f"It could not converge after {maxiter} iterations.")
+
+        return mat
 
     @property
     def static(self):
-        return all(self.block.static)
+        return all((callable(self.rrock),callable(self.fluid)))
 
     @property
     def pzero(self):
@@ -121,39 +163,6 @@ class OnePhase():
     def press(self):
         return self._press/6894.75729
 
-
-
-    def pproc(self):
-
-        Y = int((self.grid.numtot-1)/2)
-
-        Pwf = self.press[Y,:]+self.Q[Y]/self.JR*self.Fluids.viscosity[0]
-
-        return Pwf
-
-def picard(self):
-
-    for k in range(100):
-
-        Fm = mat.implicit_residual(tstep,Pn,Pk)
-
-        Pk = mat.implicit_pressure(tstep,Pn,Pk)
-
-        error = np.linalg.norm(Fm,2)
-
-        # print(f"{k:2}",f"{error:.5e}",Pk.flatten())
-
-        if np.linalg.norm(Fm,2)<1e-6:
-            break
-
-def newton(self):
-
-    for k in range(100):
-
-        F = mat.implicit_residual(tstep,P,Pk)
-        Z = jacobian(tstep,P,Pk)
-        Pk += np.linalg.solve(Z,-F)
-        error = np.linalg.norm(F,2)
-        # print(f"{k:2}",f"{error:.5e}",Pk.flatten())
-        if np.linalg.norm(F,2)<1e-6:
-            break
+    @property
+    def shape(self):
+        return (self.block.cube.numtot,self.time.nums)
