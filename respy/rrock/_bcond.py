@@ -38,6 +38,10 @@ class BoundCond():
         return self._face
 
     @property
+    def axis(self):
+        return self._face[0]
+
+    @property
     def sort(self):
         return self._sort
     

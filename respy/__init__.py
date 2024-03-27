@@ -6,6 +6,4 @@ from . import fluid
 # from . import radial
 # from . import green
 
-from . import grids
-
 from . import solver

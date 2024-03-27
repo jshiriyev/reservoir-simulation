@@ -1,3 +1,9 @@
+import sys
+
+if __name__ == "__main__":
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
 import numpy
 
 from scipy.sparse import csr_matrix as csr
@@ -9,37 +15,25 @@ from respy.solver._matrix import Matrix
 
 class Build():
 
-    def __init__(self,grid,wconds,bconds):
+    def __init__(self,grid):
 
         self.grid = grid
 
-        self.wconds = wconds
-        self.bconds = bconds
+    def __call__(self,vec:Vector):
 
-    def __call__(self,press,rrock,fluid,vec:Vector):
+        A = self.get_A(vec)
+        T = self.get_T(vec)
+        G = self.get_G(vec,T)
+        J = self.get_J(vec)
+        Q = self.get_Q(vec)
 
-        P = self.get_pmatrix(press)
-        C = self.get_cmatrix(vec)
-        T = self.get_tmatrix(vec)
-        G = self.get_gmatrix(rrock,fluid,T)
-        J = self.get_jmatrix(vec)
-        Q = self.get_qmatrix(vec)
+        return Matrix(A,T,G,J,Q)
 
-        return Matrix(P,C,T,G,J,Q)
-
-    def get_pmatrix(self,press):
-        """Returns P column matrix filled with pressure values."""
-        pmatrix = numpy.asarray(press).flatten().reshape((-1,1))
-
-        return pmatrix
-
-    def get_cmatrix(self,vec:Vector):
+    def get_A(self,vec:Vector):
         """Returns C matrix filled with diagonal values."""
-        cmatrix = diags(vec._C,shape=self.matrix)
+        return diags(vec._C,shape=self.matrix)
 
-        return cmatrix
-
-    def get_tmatrix(self,vec:Vector):
+    def get_T(self,vec:Vector):
         """Returns T matrix filled with diagonal and offset values."""
         tmatrix = csr(self.matrix)
 
@@ -54,13 +48,13 @@ class Build():
 
         return tmatrix
 
-    def get_gmatrix(self,rrock,fluid,tmatrix):
+    def get_G(self,vec:Vector,tmatrix):
         """Returns G column matrix filled with gravity coefficients."""
         gmatrix = fluid._rho*9.807*tmatrix.dot(rrock._depth)
         
         return gmatrix
 
-    def get_jmatrix(self,vec):
+    def get_J(self,vec):
         """Returns J matrix filled with constant pressure coefficients."""
 
         jmatrix = csr(self.matrix)
@@ -73,7 +67,7 @@ class Build():
 
         return jmatrix
 
-    def get_qmatrix(self,vec):
+    def get_Q(self,vec):
         """Returns Q column matrix filled with constant rate and pressure coefficients."""
 
         qmatrix = csr(self.column)
@@ -85,6 +79,11 @@ class Build():
             qmatrix += self.set_qmatrix_constraint(qmatrix,vals,cond)
 
         return qmatrix
+
+
+    def get_P(self,press):
+        """Returns P column matrix filled with pressure values."""
+        return numpy.asarray(press).flatten().reshape((-1,1))
 
     @staticmethod
     def set_tmatrix_interblock(tmatrix:csr,vals,dneg,dpos):

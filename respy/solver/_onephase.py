@@ -1,7 +1,9 @@
 import sys
 
 if __name__ == "__main__":
-    sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
+    sys.path.append(r'C:\Users\3876yl\Documents\respy')
+
 
 from respy.solver._time import Time
 
@@ -16,7 +18,7 @@ class OnePhase():
     The class solves for single phase reservoir flow in Rectangular Cuboids;
     """
 
-    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None):
+    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,depth=None,tcomp=None):
         """
         grid   : It is a GridDelta instance.
 
@@ -32,6 +34,8 @@ class OnePhase():
 
         bconds : tuple of BoundCond instance.
 
+        depth  : depth of reservoir rock, ft
+
         """
 
         self.rrock = rrock
@@ -40,17 +44,15 @@ class OnePhase():
         wconds = () if wconds is None else wconds
         bconds = () if bconds is None else bconds
 
-        self.block = Block(
-              grid = grid,
-            wconds = wconds,
-            bconds = bconds,
-            )
+        self.block = Block(grid)
 
         self.build = Build(
               grid = grid,
             wconds = wconds,
             bconds = bconds,
             )
+
+        self._depth = self.set_prop(depth,0.3048)
 
     def __call__(self,press,tstep,tcomp=None):
 
@@ -161,12 +163,17 @@ class OnePhase():
         return all((callable(self.rrock),callable(self.fluid)))
 
     @property
+    def depth(self):
+        if self._depth is not None:
+            return self._depth/0.3048
+
+    @property
     def pzero(self):
         return self._pzero/6894.75729
 
     @property
-    def comp(self):
-        return self._comp*6894.75729
+    def tcomp(self):
+        return self._tcomp*6894.75729
 
     @property
     def press(self):
@@ -175,3 +182,8 @@ class OnePhase():
     @property
     def shape(self):
         return (self.block.cube.numtot,self.time.nums)
+
+    @staticmethod
+    def set_prop(prop,conv=1.):
+        if prop is not None:
+            return numpy.asarray(prop).astype(numpy.float_)*conv

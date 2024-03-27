@@ -6,12 +6,10 @@ if __name__ == "__main__":
 
 import numpy
 
-from numpy import ndarray
-
 class RecCube():
 	"""Rectangular Cuboid class"""
 
-	def __init__(self,edge:ndarray,plat:ndarray,rows:ndarray=None,prop:set=None,**kwargs):
+	def __init__(self,edge:numpy.ndarray,plat:numpy.ndarray,rows:numpy.ndarray=None,prop:set=None,**kwargs):
 		"""
 		Rectangular Cuboid class holding cell properties:
 		

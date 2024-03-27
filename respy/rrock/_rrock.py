@@ -12,13 +12,13 @@ class ResRock():
 	at the given pressure and temperature.
 	"""
 
-	def __init__(self,*args,poro=None,depth=None,comp=None,press=None,**kwargs):
+	def __init__(self,*args,poro=None,comp=None,press=None,**kwargs):
 		"""
 		Initializes a reservoir rock with the following petrophysical parameters:
 		
 		poro    : porosity of the rock, dimensionless
-		depth 	: depth of reservoir rock, ft
 		comp 	: isothermal compressibility factor of rock, 1/psi
+
 		press   : pressure at which properties are defined; if it is None,
                   properties are pressure independent, psi
 		
@@ -29,8 +29,6 @@ class ResRock():
 		"""
 
 		self._poro  = self.set_prop(poro)
-
-		self._depth = self.set_prop(depth,0.3048)
 
 		self._comp  = self.set_prop(comp,1/6894.76)
 
@@ -56,25 +54,6 @@ class ResRock():
 		self._zperm = self._xperm*zreduce if zperm is None else self.set_prop(zperm,9.869233e-16)
 
 	@property
-	def poro(self):
-		return self._poro
-
-	@property
-	def depth(self):
-		if self._depth is not None:
-			return self._depth/0.3048
-
-	@property
-	def comp(self):
-		if self._comp is not None:
-			return self._comp*6894.75729
-
-	@property
-    def press(self):
-        if self._press is not None:
-            return self._press/6894.76
-
-	@property
 	def xperm(self):
 		if self._xperm is not None:
 			return self._xperm/9.869233e-16
@@ -88,6 +67,20 @@ class ResRock():
 	def zperm(self):
 		if self._zperm is not None:
 			return self._zperm/9.869233e-16
+
+	@property
+	def poro(self):
+		return self._poro
+
+	@property
+	def comp(self):
+		if self._comp is not None:
+			return self._comp*6894.75729
+
+	@property
+	def press(self):
+		if self._press is not None:
+			return self._press/6894.76
 
 	@staticmethod
 	def set_prop(prop,conv=1.):
