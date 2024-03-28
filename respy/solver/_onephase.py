@@ -58,6 +58,14 @@ class OnePhase():
 
         self.build = Build(grid)
 
+    def set_time(self,*args,**kwargs):
+        
+        self.time = Time(*args,**kwargs)
+
+    def set_press(self):
+
+        self._press = numpy.zeros(self.shape)
+
     def set_pzero(self,pzero=None,refp=None,grad=None):
         """Calculates the initial pressure
         
@@ -71,11 +79,7 @@ class OnePhase():
         if pzero is None:
             pzero = refp[1]+grad*(self.block.depth-refp[0])
 
-        self._pzero = pzero*6894.76
-
-    def set_time(self,*args,**kwargs):
-        
-        self.time = Time(*args,**kwargs)
+        self._press[:,0] = pzero*6894.76
 
     def __call__(self,press=None,tcurr=0,tstep=None):
 
@@ -128,33 +132,24 @@ class OnePhase():
 
         return [cond for cond in self.bconds if self.islive(cond,tcurr)]
 
-    def solve(self,theta=0):
-        """
-        Solves the linear system of equation
+    def solve(self,**kwargs):
+        """Solves the linear system of equation"""
 
-        theta   : solution type determined in the mixed solver
-                  0 means Implicit method
-                  1 means Explicit method
-                1/2 means Crank-Nicolson method
-        """
-
-        Pn = numpy.copy(self._pzero)
-
-        self._press = numpy.zeros(self.shape)
+        Pn = numpy.copy(self._press[:,0])
         
-        for n,step in enumerate(self.time.steps):
+        for n,tcurr,tstep in self.time:
 
-            if n==0:
-                mat = self.get_matrix(Pn,step)
+            if n==0 or not self.tstat:
+                mat = self(Pn,tcurr,tstep)
 
-            if not self.static:
-                mat = self.get_matrix(Pn,step)
+            if not self.tstat:
+                mat = self.iterate(mat,**kwargs)
 
-            Pn = mat.implicit_pressure(Pn)
+            Pn = mat.imppress(Pn)
 
             print(f"{n:10}",Pn.flatten())
             
-            self._press[:,n] = Pn
+            self._press[:,n+1] = Pn
 
             Pn = Pn.reshape((-1,1))
 
@@ -166,10 +161,10 @@ class OnePhase():
 
         for k in range(maxiter):
 
-            Rv = mat.implicit_residual(Pn)
+            Rv = mat.impresid(Pn)
 
             if jacobian is None:
-                Pk = mat.implicit_pressure(Pn)
+                Pk = mat.imppress(Pn)
             else:
                 Jm = jacobian(Pk,tstep,tcomp)
                 Pk = Pk+np.linalg.solve(Jm,-Rv)
@@ -199,7 +194,7 @@ class OnePhase():
 
     @property
     def shape(self):
-        return (self.block.nums,self.time.nums)
+        return (self.block.nums,self.time.nums+1)
 
     @property
     def tstat(self):

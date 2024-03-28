@@ -1,7 +1,5 @@
 from respy.fluid._fluid import Fluid
 
-# from respy.utils._prop import Prop
-
 class Gas():
     """
     The hydrocarbon gases that are normally found in a natural gas are
@@ -43,8 +41,8 @@ class Gas():
 
         self._temp  = None if temp is None else temp*(5./9)
 
-        self.__zfact = Prop(zfact)
-        self.__visc  = Prop(visc)
+        self._zfact = zfact
+        self._visc  = visc
 
     @property
     def spgr(self):

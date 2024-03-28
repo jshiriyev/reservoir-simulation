@@ -38,7 +38,7 @@ class Matrix():
 
         self._P = P
 
-    def implicit_pressure(self,Pprev):
+    def imppress(self,Pprev):
         """Implicit solution: self is defined at Pnext, and
         returned pressure is Pnext."""
 
@@ -48,7 +48,7 @@ class Matrix():
 
         return linalg.spsolve(LHS,RHS)
 
-    def implicit_residual(self,Pprev):
+    def impresid(self,Pprev):
         """Returns residual vector for the self defined at Pnext in
         SI units, (m**3)/(sec)"""
 
@@ -58,7 +58,7 @@ class Matrix():
 
         return -csr.dot(LHS,self._P)+RHS
 
-    def explicit_pressure(self):
+    def exppress(self):
         """Explicit solution: self is defined at Pprev, and
         returned pressure is Pnext."""
 
@@ -68,7 +68,7 @@ class Matrix():
 
         return linalg.spsolve(LHS,RHS)
 
-    def explicit_residual(self,Pnext):
+    def expresid(self,Pnext):
         """Returns residual vector for the self defined at Pprev in
         SI units, (m**3)/(sec)"""
 

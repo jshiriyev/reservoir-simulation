@@ -66,7 +66,7 @@ class CKB():
         """Returns reduced temperature (class property)."""
         return self.temp/self.tcrit
 
-    def __call__(self,press,*args,**kwarg):
+    def __call__(self,press):
 
         return self.mu1*self.ratio(self.pred(press),self.tred)
 
@@ -174,7 +174,7 @@ class LGE():
     def get_C(self):
         return 2.447-0.2224*self.B
     
-    def __call__(self,press,zfact,*args,**kwarg):
+    def __call__(self,press,zfact):
         """Returns Gas Viscosity in cp"""
 
         rho = (press*self.molw)/(zfact*10.731577089016*self.temp)

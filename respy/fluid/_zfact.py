@@ -63,7 +63,7 @@ class HY():
 	def get_X4(tred):
 		return 2.18+2.82/tred
 
-	def __call__(self,press:numpy.ndarray,*args,**kwargs):
+	def __call__(self,press:numpy.ndarray):
 
 		pred = self.pred(press)
 
@@ -158,7 +158,7 @@ class DAK():
 		A10 = 0.6134
 		return A10/tred**3
 
-	def __call__(self,press:numpy.ndarray,*args,**kwargs):
+	def __call__(self,press:numpy.ndarray):
 
 		pred = self.pred(press)
 
@@ -264,7 +264,7 @@ class DPR():
 		A7 = 0.68157001
 		return A7/tred**3
 
-	def __call__(self,press:numpy.ndarray,*args,**kwargs):
+	def __call__(self,press:numpy.ndarray):
 
 		pred = self.pred(press)
 
@@ -357,7 +357,7 @@ class OE():
 		# e is defined as the derivative of b w.r.t Pr
 		return (0.62-0.23*tred)+(0.132/(tred-0.86)-0.074)*pred+1.92*pred**5/(10**(9*(tred-1)))
 
-	def __call__(self,press:numpy.ndarray,*args,**kwargs):
+	def __call__(self,press:numpy.ndarray):
 
 		pred = self.pred(press)
 
