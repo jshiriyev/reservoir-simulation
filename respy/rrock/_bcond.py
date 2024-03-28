@@ -9,9 +9,12 @@ class BoundCond():
     It is a boundary condition object used in the simulator.
     """
 
-    def __init__(self,face,*,**kwargs):
+    def __init__(self,face,*,start:float=0,stop:float=None,**kwargs):
         """
         face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
+
+        start   : start time for implementing the boundary condition, days
+        stop    : stop time for implementing the boundary condition, days
 
         Assign only one of the following conditions:
 
@@ -21,6 +24,9 @@ class BoundCond():
         grate   : constant flow boundary condition, 0 = no flow, ft3/day
         """
         self._face = face
+
+        self._start  = start*(24*60*60)
+        self._stop   = None if stop is None else stop*(24*60*60)
 
         for key,value in kwargs.items():
             if value is not None:
@@ -42,6 +48,14 @@ class BoundCond():
     @property
     def axis(self):
         return self._face[0]
+
+    @property
+    def start(self):
+        return self._start/(24*60*60)
+
+    @property
+    def stop(self):
+        return None if self._stop is None else self._stop/(24*60*60)
 
     @property
     def sort(self):

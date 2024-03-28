@@ -42,7 +42,8 @@ class RecCube():
 		object.__setattr__(self,"prop",prop)
 
 		for key,value in kwargs.items():
-			self.__setattr__(key,value)
+			if value is not None:
+				self.__setattr__(key,value)
 
 	def __setattr__(self,key,value):
 

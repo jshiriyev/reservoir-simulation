@@ -4,7 +4,6 @@ if __name__ == "__main__":
     # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
     sys.path.append(r'C:\Users\3876yl\Documents\respy')
 
-
 from respy.solver._time import Time
 
 from respy.solver._block import Block
@@ -18,7 +17,7 @@ class OnePhase():
     The class solves for single phase reservoir flow in Rectangular Cuboids;
     """
 
-    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,depth=None,tcomp=None):
+    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,**kwargs):
         """
         grid   : It is a GridDelta instance.
 
@@ -34,27 +33,34 @@ class OnePhase():
 
         bconds : tuple of BoundCond instance.
 
-        depth  : depth of reservoir rock, ft
-        tcomp  : total compressibility of rock and fluid system, 1/psi
-
         """
 
-        kwargs = {}
-
-        if depth is not None:
-            kwargs["depth"] = depth*0.3048
-
-        if tcomp is not None:
-            kwargs["tcomp"] = tcomp/6894.76
-
-        self.block  = Block(grid,**kwargs)
-        self.build  = Build(grid)
+        self.set_block(grid,**kwargs)
+        self.set_build(grid)
 
         self.rrock  = rrock
         self.fluid  = fluid
 
         self.wconds = () if wconds is None else wconds
         self.bconds = () if bconds is None else bconds
+
+        self.set_pzero(**kwargs)
+
+    def set_block(self,grid,**kwargs):
+
+        depth,tcomp = None,None
+
+        if kwargs.get("depth") is not None:
+            depth = kwargs.pop("depth")*0.3048
+
+        if kwargs.pop("tcomp") is not None:
+            tcomp = kwargs.pop("tcomp")/6894.76
+
+        self.block = Block(grid,depth=depth,tcomp=tcomp)
+
+    def set_build(self,grid):
+
+        self.build = Build(grid)
 
     def set_pzero(self,pzero=None,refp=None,grad=None):
         """Calculates the initial pressure
@@ -71,17 +77,23 @@ class OnePhase():
 
         self._pzero = pzero*6894.76
 
-    def set_time(self,time:Time):
+    def set_time(self,*args,**kwargs):
         
-        self.time = Time
+        self.time = Time(*args,**kwargs)
 
-    def __call__(self,press,tcurr,tstep):
+    def __call__(self,press=None,tcurr=0,tstep=None):
+
+        if press is None:
+            press = self._pzero
 
         rrock  = self.get_rrock(press)
         fluid  = self.get_fluid(press)
 
         wconds = self.get_wconds(tcurr)
         bconds = self.get_bconds(tcurr)
+
+        if tstep is None:
+            tstep = self.time._steps[0]
 
         vec = self.block(
             rrock,fluid,wconds,bconds,tstep)
@@ -92,29 +104,33 @@ class OnePhase():
 
     def get_rrock(self,press):
 
-        if self.rstat:
-            return self.rrock(press)
-        
-        self.rrock._press = press
+        if self.rstat and press is None:
+            return self.rrock
 
-        return self.rrock
+        if self.rstat:
+            self.rrock._press = press
+            return self.rrock
+
+        return self.rrock(press)
 
     def get_fluid(self,press):
 
+        if self.fstat and press is None:
+            return self.fluid
+
         if self.fstat:
-            return self.fluid(press)
-
-        self.fluid._press = press
-
-        return self.fluid
+            self.fluid._press = press
+            return self.fluid
+        
+        return self.fluid(press)
 
     def get_wconds(self,tcurr):
 
-        return self.wconds
+        return [cond for cond in self.wconds if self.islive(cond,tcurr)]
 
     def get_bconds(self,tcurr):
 
-        return self.bconds
+        return [cond for cond in self.bconds if self.islive(cond,tcurr)]
 
     def solve(self,theta=0):
         """
@@ -179,11 +195,11 @@ class OnePhase():
 
     @property
     def pzero(self):
-        return self._pzero/6894.75729
+        return self._pzero/6894.76
 
     @property
     def press(self):
-        return self._press/6894.75729
+        return self._press/6894.76
 
     @property
     def shape(self):
@@ -195,8 +211,22 @@ class OnePhase():
 
     @property
     def rstat(self):
-        return callable(self.rrock)
+        return not callable(self.rrock)
 
     @property
     def fstat(self):
-        return callable(self.fluid)
+        return not callable(self.fluid)
+
+    @staticmethod
+    def islive(cond,tcurr):
+
+        if cond._start>tcurr:
+            return False
+
+        if cond._stop is None:
+            return True
+
+        if cond._stop<=tcurr:
+            return False
+
+        return True

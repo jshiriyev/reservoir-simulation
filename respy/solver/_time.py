@@ -23,9 +23,9 @@ class Time():
 
 	def set_times(self,method="linspace",**kwargs):
 		"""Sets time steps for reservoir simulation."""
-		self._times = getattr(self,method)(**kwargs)
+		self._spots = getattr(self,method)(**kwargs)
 
-		self._steps = self.get_steps(self._times)
+		self._steps = self.get_steps(self._spots)
 
 	def linspace(self,nums=None):
 		"""Returns linearly spaced time data."""
@@ -50,8 +50,8 @@ class Time():
 		return self._total/(24*60*60)
 
 	@property
-	def times(self):
-		return self._times/(24*60*60)
+	def spots(self):
+		return self._spots/(24*60*60)
 
 	@property
 	def steps(self):
@@ -59,7 +59,7 @@ class Time():
 
 	@property
 	def nums(self):
-		return self._times.size
+		return self._steps.size
 
 	"""Static methods:"""
 	

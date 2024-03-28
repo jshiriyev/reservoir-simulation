@@ -1,6 +1,6 @@
 from respy.fluid._fluid import Fluid
 
-from respy.utils._prop import Prop
+# from respy.utils._prop import Prop
 
 class Gas():
     """
