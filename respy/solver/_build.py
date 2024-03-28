@@ -8,8 +8,6 @@ import numpy
 
 from scipy.sparse import csr_matrix as csr
 
-from scipy.sparse import diags
-
 from respy.solver._vector import Vector
 from respy.solver._matrix import Matrix
 
@@ -30,63 +28,56 @@ class Build():
         return Matrix(A,T,G,J,Q)
 
     def get_A(self,vec:Vector):
-        """Returns C matrix filled with diagonal values."""
-        return diags(vec._C,shape=self.matrix)
+        """Returns A matrix filled with diagonal values."""
+        return csr((vec._A,(self.grid.rows,self.grid.rows)),shape=self.matrix)
 
     def get_T(self,vec:Vector):
         """Returns T matrix filled with diagonal and offset values."""
         tmatrix = csr(self.matrix)
 
-        tmatrix = self.set_tmatrix_interblock(
+        tmatrix = self.add_tmatrix_interblock(
             tmatrix,vec._X,self.grid.xneg,self.grid.xpos)
 
-        tmatrix = self.set_tmatrix_interblock(
+        tmatrix = self.add_tmatrix_interblock(
             tmatrix,vec._Y,self.grid.yneg,self.grid.ypos)
 
-        tmatrix = self.set_tmatrix_interblock(
+        tmatrix = self.add_tmatrix_interblock(
             tmatrix,vec._Z,self.grid.zneg,self.grid.zpos)
 
         return tmatrix
 
     def get_G(self,vec:Vector,tmatrix):
-        """Returns G column matrix filled with gravity coefficients."""
-        gmatrix = fluid._rho*9.807*tmatrix.dot(rrock._depth)
-        
-        return gmatrix
+        """Returns G column matrix filled with gravity related terms."""
+        return tmatrix.dot(vec._H.reshape((-1,1)))
 
     def get_J(self,vec):
-        """Returns J matrix filled with constant pressure coefficients."""
+        """Returns J matrix filled with constant pressure constraints on diagonal."""
 
         jmatrix = csr(self.matrix)
 
-        for vals,cond in zip(vec._W,self.wconds):
-            jmatrix += self.set_jmatrix_constraint(jmatrix,vals,cond)
+        for wcond in vec._W:
+            jmatrix += self.add_jmatrix_constraint(jmatrix,wcond)
 
-        for vals,cond in zip(vec._B,self.bconds):
-            jmatrix += self.set_jmatrix_constraint(jmatrix,vals,cond)
+        for bcond in vec._B:
+            jmatrix += self.add_jmatrix_constraint(jmatrix,bcond)
 
         return jmatrix
 
     def get_Q(self,vec):
-        """Returns Q column matrix filled with constant rate and pressure coefficients."""
+        """Returns Q column matrix filled with constraints."""
 
         qmatrix = csr(self.column)
 
-        for vals,cond in zip(vec._W,self.wconds):
-            qmatrix += self.set_qmatrix_constraint(qmatrix,vals,cond)
+        for wcond in vec._W:
+            qmatrix += self.add_qmatrix_constraint(qmatrix,wcond)
 
-        for vals,cond in zip(vec._B,self.bconds):
-            qmatrix += self.set_qmatrix_constraint(qmatrix,vals,cond)
+        for bcond in vec._B:
+            qmatrix += self.add_qmatrix_constraint(qmatrix,bcond)
 
         return qmatrix
 
-
-    def get_P(self,press):
-        """Returns P column matrix filled with pressure values."""
-        return numpy.asarray(press).flatten().reshape((-1,1))
-
     @staticmethod
-    def set_tmatrix_interblock(tmatrix:csr,vals,dneg,dpos):
+    def add_tmatrix_interblock(tmatrix:csr,vals,dneg,dpos):
         """Returns updated T matrix."""
 
         tmatrix += csr((vals,(dneg,dneg)),shape=tmatrix.shape)
@@ -98,35 +89,37 @@ class Build():
         return tmatrix
 
     @staticmethod
-    def set_jmatrix_constraint(jmatrix:csr,vals,cond):
+    def add_jmatrix_constraint(jmatrix:csr,cond):
         """Returns updated J matrix."""
 
         if cond.sort=="press":
-            jmatrix += csr((vals,(cond.block,cond.block)),shape=jmatrix.shape)
+            jmatrix += csr((cond._prod,(cond.block,cond.block)),shape=jmatrix.shape)
 
         return jmatrix
 
     @staticmethod
-    def set_qmatrix_constraint(qmatrix:csr,vals,cond):
+    def add_qmatrix_constraint(qmatrix:csr,cond):
         """Returns updated Q column matrix."""
 
-        if cond.sort=="press":
-            qvals = vals*cond._cond
-        else:
-            qvals = vals/vals.sum()*cond._cond
+        qvector = cond._prod*cond._cond
 
-        qmatrix += csr((qvals,(cond.block,numpy.zeros(cond.block.size))),shape=qmatrix.shape)
+        if cond.sort!="press":
+            qvector /= cond._prod.sum()
+
+        qmatrix += csr((qvector,(cond.block,numpy.zeros(cond.block.size))),shape=qmatrix.shape)
 
         return qmatrix
 
     @property
     def matrix(self):
-        """Returns the shape of matrices in the flow calculations."""
-        return (self.edge.shape[0],)*2
+        """Returns the shape of square matrices in the flow calculations."""
+        return (self.grid.nums,)*2
 
     @property
     def column(self):
         """Returns the shape of column matrices in the flow calculations."""
-        return (self.edge.shape[0],1)
-    
-    
+        return (self.grid.nums,1)
+
+if __name__ == "__main__":
+
+    pass

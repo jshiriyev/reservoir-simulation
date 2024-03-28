@@ -28,12 +28,11 @@ class Fluid():
 
         """
         
-        self._visc  = self.set_prop(visc,0.001)
-        self._rho   = self.set_prop(rho,16.0185)
-        self._comp  = self.set_prop(comp,1/6894.76)
-        self._fvf   = self.set_prop(fvf)
-
-        self._press = self.set_prop(press,6894.76)
+        self._visc  = self.get_prop(visc,0.001)
+        self._rho   = self.get_prop(rho,16.0185)
+        self._comp  = self.get_prop(comp,1/6894.76)
+        self._fvf   = self.get_prop(fvf)
+        self._press = self.get_prop(press,6894.76)
 
     @property
     def visc(self):
@@ -60,7 +59,7 @@ class Fluid():
             return self._press/6894.76
 
     @staticmethod
-    def set_prop(prop,conv=1.):
+    def get_prop(prop,conv=1.):
         if prop is not None:
             return numpy.asarray(prop).astype(numpy.float_)*conv
 

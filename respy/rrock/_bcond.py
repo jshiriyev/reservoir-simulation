@@ -33,6 +33,8 @@ class BoundCond():
                     self._cond = value*(0.3048**3)/(24*60*60)
                 break
 
+        self._prod = None
+
     @property
     def face(self):
         return self._face
@@ -53,6 +55,11 @@ class BoundCond():
             return self._cond*(24*60*60)/(0.3048**3)/5.615
         elif self._sort == "grate":
             return self._cond*(24*60*60)/(0.3048**3)
+
+    @property
+    def prod(self):
+        return self._prod*(3.28084**3)*(24*60*60)*6894.76
+    
 
 if __name__ == "__main__":
 

@@ -53,13 +53,14 @@ class Block(RecCube):
 
         self.fcomp = fluid._comp
 
+        self.fhead = self.get_fluid_hhead(fluid)
         self.power = self.get_fluid_power(fluid)
         self.mobil = self.get_fluid_mobil(fluid)
 
     def get_tvect(self,tdelta):
         """Returns A.ct, Tx, Ty, and Tz in the form of flat arrays."""
 
-        Actvec = self.get_block_accum(tdelta)
+        acvect = self.get_block_accum(tdelta)
 
         xneg,xpos = self.xneg,self.xpos
         yneg,ypos = self.yneg,self.ypos
@@ -78,7 +79,7 @@ class Block(RecCube):
         zfmean = self.get_upwinding_mean(
             zneg.mobil,zpos.mobil,zneg.power,zpos.power)
 
-        return (Actvec,xrmean*xfmean,yrmean*yfmean,zrmean*zfmean)
+        return (acvect,xrmean*xfmean,yrmean*yfmean,zrmean*zfmean,self.fhead)
 
     def get_wvect(self,wconds):
         """Returns productivity for all active wells."""
@@ -88,7 +89,7 @@ class Block(RecCube):
     def get_bvect(self,bconds):
         """Returns transmissibility for all active boundaries."""
         bconds = () if bconds is None else bconds
-        return [self.get_btran(bcond) for bcond in bconds]
+        return [self.get_bprod(bcond) for bcond in bconds]
 
     def get_rock_xflow(self):
         """Returns rock transmissibility in x-direction."""
@@ -102,15 +103,16 @@ class Block(RecCube):
         """Returns rock transmissibility in z-direction."""
         return (self.zperm*self.zarea)/(self.zedge)
 
-    def get_fluid_power(self,fluid):
-        """Returns fluid phase potential."""
-        return fluid._press+self.get_fluid_hhead(fluid)
-
     def get_fluid_hhead(self,fluid):
         """Returns fluid hydrostatic head."""
         if "depth" not in self.prop:
             return 0
+
         return fluid._rho*9.807*self.depth
+
+    def get_fluid_power(self,fluid):
+        """Returns fluid phase potential."""
+        return self.fluid+fluid._press
 
     def get_fluid_mobil(self,fluid,rperm=1):
         """Returns fluid phase mobility."""
@@ -135,16 +137,21 @@ class Block(RecCube):
             dhk = well.zedge*numpy.sqrt(well.xperm*well.yperm)
             req = self.get_equiv_radius(well.xperm,well.yperm,well.xedge,well.yedge)
 
-        return (2*numpy.pi*dhk)*well.mobil/(numpy.log(req/wcond.radius)+wcond.skin)
+        wcond._prod = (2*numpy.pi*dhk)/(numpy.log(req/wcond.radius)+wcond.skin)
+        wcond._prod *= well.mobil
+        
+        return wcond
 
-    def get_btran(self,bcond):
+    def get_bprod(self,bcond):
         """Returns exterior block transmissibility values for the
         given boundary condition."""
 
         face = getattr(self,bcond.face)
         flow = getattr(face,f"{bcond.axis}flow")
 
-        return flow*face.mobil
+        bcond._prod = flow*face.mobil
+
+        return bcond
 
     @property
     def ccomp(self):

@@ -35,48 +35,26 @@ class OnePhase():
         bconds : tuple of BoundCond instance.
 
         depth  : depth of reservoir rock, ft
+        tcomp  : total compressibility of rock and fluid system, 1/psi
 
         """
 
-        self.rrock = rrock
-        self.fluid = fluid
+        kwargs = {}
 
-        wconds = () if wconds is None else wconds
-        bconds = () if bconds is None else bconds
+        if depth is not None:
+            kwargs["depth"] = depth*0.3048
 
-        self.block = Block(grid)
+        if tcomp is not None:
+            kwargs["tcomp"] = tcomp/6894.76
 
-        self.build = Build(
-              grid = grid,
-            wconds = wconds,
-            bconds = bconds,
-            )
+        self.block  = Block(grid,**kwargs)
+        self.build  = Build(grid)
 
-        self._depth = self.set_prop(depth,0.3048)
+        self.rrock  = rrock
+        self.fluid  = fluid
 
-    def __call__(self,press,tstep,tcomp=None):
-
-        # updating rock and fluid properties with input pressure values
-        if callable(self.rrock):
-            rrock = self.rrock(press)
-        else:
-            rrock = self.rrock
-            rrock._press = press
-
-        if callable(self.fluid):
-            fluid = self.fluid(press)
-        else:
-            fluid = self.fluid
-            fluid._press = press
-
-        vec = self.block(rrock,fluid)
-
-        vec.set_A(tstep)
-        vec.set_C(tcomp)
-
-        mat = self.build(rrock,fluid,vec)
-
-        return mat
+        self.wconds = () if wconds is None else wconds
+        self.bconds = () if bconds is None else bconds
 
     def set_pzero(self,pzero=None,refp=None,grad=None):
         """Calculates the initial pressure
@@ -89,13 +67,54 @@ class OnePhase():
         """
 
         if pzero is None:
-            pzero = refp[1]+grad*(self.block.rrock.depth-refp[0])
+            pzero = refp[1]+grad*(self.block.depth-refp[0])
 
-        self._pzero = pzero*6894.75729
+        self._pzero = pzero*6894.76
 
     def set_time(self,time:Time):
         
         self.time = Time
+
+    def __call__(self,press,tcurr,tstep):
+
+        rrock  = self.get_rrock(press)
+        fluid  = self.get_fluid(press)
+
+        wconds = self.get_wconds(tcurr)
+        bconds = self.get_bconds(tcurr)
+
+        vec = self.block(
+            rrock,fluid,wconds,bconds,tstep)
+
+        mat = self.build(vec)
+
+        return mat
+
+    def get_rrock(self,press):
+
+        if self.rstat:
+            return self.rrock(press)
+        
+        self.rrock._press = press
+
+        return self.rrock
+
+    def get_fluid(self,press):
+
+        if self.fstat:
+            return self.fluid(press)
+
+        self.fluid._press = press
+
+        return self.fluid
+
+    def get_wconds(self,tcurr):
+
+        return self.wconds
+
+    def get_bconds(self,tcurr):
+
+        return self.bconds
 
     def solve(self,theta=0):
         """
@@ -159,21 +178,8 @@ class OnePhase():
         return mat
 
     @property
-    def static(self):
-        return all((callable(self.rrock),callable(self.fluid)))
-
-    @property
-    def depth(self):
-        if self._depth is not None:
-            return self._depth/0.3048
-
-    @property
     def pzero(self):
         return self._pzero/6894.75729
-
-    @property
-    def tcomp(self):
-        return self._tcomp*6894.75729
 
     @property
     def press(self):
@@ -181,9 +187,12 @@ class OnePhase():
 
     @property
     def shape(self):
-        return (self.block.cube.numtot,self.time.nums)
+        return (self.block.nums,self.time.nums)
 
-    @staticmethod
-    def set_prop(prop,conv=1.):
-        if prop is not None:
-            return numpy.asarray(prop).astype(numpy.float_)*conv
+    @property
+    def rstat(self):
+        return callable(self.rrock)
+
+    @property
+    def fstat(self):
+        return callable(self.fluid)

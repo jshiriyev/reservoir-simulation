@@ -30,27 +30,29 @@ class WellCond():
         grate   : constant gas rate
         """
 
-        self._radius    = radius*0.3048
+        self._radius = radius*0.3048
 
-        self._block     = block
+        self._block  = block
 
-        self._axis      = axis
+        self._axis   = axis
 
-        self._skin      = skin
+        self._skin   = skin
 
-        self._start     = start*(24*60*60)
-        self._stop      = None if stop is None else stop*(24*60*60)
+        self._start  = start*(24*60*60)
+        self._stop   = None if stop is None else stop*(24*60*60)
 
         for key,value in kwargs.items():
             if value is not None:
                 self._sort = key
                 if key == "press":
                     self._cond = value*6894.76
-                elif key in ("orate","grate"):
+                elif key in ("orate","wrate"):
                     self._cond = value*(0.3048**3)/(24*60*60)*5.615
                 elif key == "grate":
                     self._cond = value*(0.3048**3)/(24*60*60)
                 break
+
+        self._prod   = None
     
     @property
     def radius(self):
@@ -88,6 +90,10 @@ class WellCond():
             return self._cond*(24*60*60)/(0.3048**3)/5.615
         elif self._sort == "grate":
             return self._cond*(24*60*60)/(0.3048**3)
+
+    @property
+    def prod(self):
+        return self._prod*(3.28084**3)*(24*60*60)*6894.76
 
 if __name__ == "__main__":
 

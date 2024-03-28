@@ -68,8 +68,8 @@ class RecCube():
 		return RecCube(**kwargs)
 
 	@property
-	def shape(self):
-		return (self.rows.size,)
+	def nums(self):
+		return self.rows.size
 
 	@property
 	def dims(self):
