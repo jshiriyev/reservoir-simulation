@@ -190,6 +190,10 @@ class OnePhase():
         return (self.block.nums,self.time.nums)
 
     @property
+    def tstat(self):
+        return all((self.rstat,self.fstat))
+
+    @property
     def rstat(self):
         return callable(self.rrock)
 
