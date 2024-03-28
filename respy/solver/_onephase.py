@@ -44,19 +44,15 @@ class OnePhase():
         self.wconds = () if wconds is None else wconds
         self.bconds = () if bconds is None else bconds
 
-        self.set_pzero(**kwargs)
-
     def set_block(self,grid,**kwargs):
 
-        depth,tcomp = None,None
-
         if kwargs.get("depth") is not None:
-            depth = kwargs.pop("depth")*0.3048
+            kwargs["depth"] *= 0.3048
 
-        if kwargs.pop("tcomp") is not None:
-            tcomp = kwargs.pop("tcomp")/6894.76
+        if kwargs.get("tcomp") is not None:
+            kwargs["tcomp"] /= 6894.76
 
-        self.block = Block(grid,depth=depth,tcomp=tcomp)
+        self.block = Block(grid,**kwargs)
 
     def set_build(self,grid):
 
