@@ -12,7 +12,7 @@ from respy.solver._build import Build
 from respy.solver._vector import Vector
 from respy.solver._matrix import Matrix
 
-class OnePhase():
+class IMPES():
     """
     The class solves for single phase reservoir flow in Rectangular Cuboids;
     """

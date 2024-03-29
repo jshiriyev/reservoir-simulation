@@ -39,7 +39,7 @@ Benchmark:
 
 """
 
-class BlackOil():
+class SimSim():
     """IMPES Solution"""
     def __init__(self,res,fluids,relperm,wells):
 
@@ -53,136 +53,6 @@ class BlackOil():
         self.Wells = Wells()
 
         self.rp = relperm
-
-    def set_transmissibility(self):
-
-        dx0 = self.res.grid_sizes[:,0]
-        dy0 = self.res.grid_sizes[:,1]
-        dz0 = self.res.grid_sizes[:,2]
-
-        dxm = self.res.grid_sizes[self.res.grid_indices[:,1],0]
-        dxp = self.res.grid_sizes[self.res.grid_indices[:,2],0]
-        dym = self.res.grid_sizes[self.res.grid_indices[:,3],1]
-        dyp = self.res.grid_sizes[self.res.grid_indices[:,4],1]
-        dzm = self.res.grid_sizes[self.res.grid_indices[:,5],2]
-        dzp = self.res.grid_sizes[self.res.grid_indices[:,6],2]
-
-        Ax = self.res.grid_areas[:,0]
-        Ay = self.res.grid_areas[:,1]
-        Az = self.res.grid_areas[:,2]
-
-        kx0 = self.res.permeability[:,0]
-        ky0 = self.res.permeability[:,1]
-        kz0 = self.res.permeability[:,2]
-
-        kxm = self.res.permeability[self.res.grid_indices[:,1],0]
-        kxp = self.res.permeability[self.res.grid_indices[:,2],0]
-        kym = self.res.permeability[self.res.grid_indices[:,3],1]
-        kyp = self.res.permeability[self.res.grid_indices[:,4],1]
-        kzm = self.res.permeability[self.res.grid_indices[:,5],2]
-        kzp = self.res.permeability[self.res.grid_indices[:,6],2]
-
-        dxm_mean = (dx0+dxm)/2
-        dxp_mean = (dx0+dxp)/2
-        dym_mean = (dy0+dym)/2
-        dyp_mean = (dy0+dyp)/2
-        dzm_mean = (dz0+dzm)/2
-        dzp_mean = (dz0+dzp)/2
-
-        kxm_mean = (2*dxm_mean)/(dx0/kx0+dxm/kxm)
-        kxp_mean = (2*dxp_mean)/(dx0/kx0+dxp/kxp)
-        kym_mean = (2*dym_mean)/(dy0/ky0+dym/kym)
-        kyp_mean = (2*dyp_mean)/(dy0/ky0+dyp/kyp)
-        kzm_mean = (2*dzm_mean)/(dz0/kz0+dzm/kzm)
-        kzp_mean = (2*dzp_mean)/(dz0/kz0+dzp/kzp)
-
-        self.TXM = (Ax*kxm_mean)/(dxm_mean)
-        self.TYM = (Ay*kym_mean)/(dym_mean)
-        self.TZM = (Az*kzm_mean)/(dzm_mean)
-
-        self.TXP = (Ax*kxp_mean)/(dxp_mean)
-        self.TYP = (Ay*kyp_mean)/(dyp_mean)
-        self.TZP = (Az*kzp_mean)/(dzp_mean)
-
-    def set_wells(self):
-
-        self.well_grids      = np.array([],dtype=int)
-        self.well_indices    = np.array([],dtype=int)
-        self.well_bhpflags   = np.array([],dtype=bool)
-        self.well_limits     = np.array([],dtype=float)
-        self.well_waterflags = np.array([],dtype=bool)
-        self.well_oilflags   = np.array([],dtype=bool)
-
-        wells = zip(self.wells.tracks,self.wells.consbhp,self.wells.limits,self.wells.water,self.wells.oil)
-
-        for index,(track,flag,limit,water,oil) in enumerate(wells):
-
-            ttrack = np.transpose(track[:,:,np.newaxis],(2,1,0))
-
-            vector = self.res.grid_centers[:,:,np.newaxis]-ttrack
-
-            distance = np.sqrt(np.sum(vector**2,axis=1))
-
-            well_grid = np.unique(np.argmin(distance,axis=0))
-
-            well_index = np.full(well_grid.size,index,dtype=int)
-    
-            well_bhpflag = np.full(well_grid.size,flag,dtype=bool)
-
-            well_limit = np.full(well_grid.size,limit,dtype=float)
-
-            well_waterflag = np.full(well_grid.size,water,dtype=bool)
-            
-            well_oilflag = np.full(well_grid.size,oil,dtype=bool)
-
-            self.well_grids = np.append(self.well_grids,well_grid)
-
-            self.well_indices = np.append(self.well_indices,well_index)
-
-            self.well_bhpflags = np.append(self.well_bhpflags,well_bhpflag)
-
-            self.well_limits = np.append(self.well_limits,well_limit)
-
-            self.well_waterflags = np.append(self.well_waterflags,well_waterflag)
-
-            self.well_oilflags = np.append(self.well_oilflags,well_oilflag)
-
-        dx = self.res.grid_sizes[self.well_grids,0]
-        dy = self.res.grid_sizes[self.well_grids,1]
-        dz = self.res.grid_sizes[self.well_grids,2]
-
-        req = 0.14*np.sqrt(dx**2+dy**2)
-
-        rw = self.wells.radii[self.well_indices]
-
-        skin = self.wells.skinfactors[self.well_indices]
-
-        kx = self.res.permeability[:,0][self.well_grids]
-        ky = self.res.permeability[:,1][self.well_grids]
-
-        dz = self.res.grid_sizes[:,2][self.well_grids]
-
-        self.JR = (2*np.pi*dz*np.sqrt(kx*ky))/(np.log(req/rw)+skin)
-
-    def set_time(self,step,total):
-
-        self.time_step = step
-        self.time_total = total
-
-        self.time_array = np.arange(self.time_step,self.time_total+self.time_step,self.time_step)
-
-    def initialize(self,pressure,saturation):
-
-        N = self.time_array.size
-
-        self.pressure = np.empty((self.res.grid_numtot,N+1))
-        self.pressure[:,0] = pressure
-
-        self.Sw = np.empty((self.res.grid_numtot,N+1))
-        self.Sw[:,0] = saturation
-
-        # for index,(p,sw) in enumerate(zip(self.pressure[:,-1],self.Sw[:,-1])):
-        #   print("{:d}\tP\t{:3.0f}\tSw\t{:.4f}".format(index,p,sw))
 
     def solve(self):
 
