@@ -17,24 +17,25 @@ from scipy.sparse import csr_matrix as csr
 
 """
 
- 1. Exercise for single phase compressible flow numerical solution, Balhoff
- 2. Finalize linear module one-phase flow
- 3. Two phase flow of water and oil, no capillary pressure
- 4. Effective implementation of upwinding
- 5. Finalize Buckley Leverett solution
- 6. Benchmark numerical solution with Buckley Leverett
- 7. Finalize Relative Permeability curves
- 8. Finalize capillary pressure models.
- 9. Two phase flow of water and oil, with capillary pressure
-10. Finalize two phase flow
-11. Finalize three phase flow
+Theoretical Models:
+ 1. Finalize One-Phase Linear flow
+ 2. Finalize One-Phase Radial flow
+ 3. Finalize Buckley Leverett solution
+ 4. Finalize Relative Permeability curves
+ 5. Finalize Capillary Pressure models
+ 6. Generating the z-factor graph
 
-LATER:
+Numerical Models:
+ 1. Single phase compressible flow numerical solution, Balhoff
+ 2. Two phase flow of water and oil, no capillary pressure
+ 3. Benchmark numerical solution with Buckley Leverett
+ 4. Two phase flow of water and oil, with capillary pressure
+ 5. Finalize two phase flow
+ 6. Finalize three phase flow
+
+Benchmark:
  
- 1. Generating the z-factor graph
- 2. Exercise for single phase compressible flow analytical solution
- 3. Benchmark numerical solution for compressible flow
- 4. Finalize the single phase flow of all kinds, all non-linearities in mind
+ 1. Benchmark numerical solution for compressible flow
 
 """
 

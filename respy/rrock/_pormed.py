@@ -7,47 +7,40 @@ import numpy
 
 from respy.rock._resrock import ResRock
 
-from respy.utils._prop import Prop
-
 class PorMed():
 
-    def __init__(self,depth=None,poro=None,xperm=None,yperm=None,zperm=None,comp=None):
+    def __init__(self,poro=None,xperm=None,yperm=None,zperm=None,comp=None):
         """
         """
 
-        self._depth = depth*0.3048
-
-        self.__poro  = Prop(poro)
-
-        self.__xperm = Prop(xperm)
-        self.__yperm = Prop(yperm)
-        self.__zperm = Prop(zperm)
-
-        self.__comp  = Prop(comp)
-
-    @property
-    def depth(self):
-        return self._depth/0.3048
+        self.__poro = poro
+        self.__perm = perm
+        self.__comp = comp
     
-    @property
-    def poro(self):
-        return self.__poro()
+    def poro(self,press):
+        if callable(self.__poro):
+            return self.__poro(press)
+        return self.__poro
 
-    @property
-    def xperm(self):
-        return self.__xperm()
+    def xperm(self,press):
+        if callable(self.__perm):
+            return self.__perm(press)
+        return self.__perm
 
-    @property
-    def yperm(self):
-        return self.__yperm()
+    def yperm(self,press,yreduce=1.):
+        if callable(self.__perm):
+            return self.__perm(press)/yreduce
+        return self.__perm/yreduce
 
-    @property
-    def zperm(self):
-        return self.__zperm()
+    def zperm(self,press,zreduce=1):
+        if callable(self.__perm):
+            return self.__perm(press)/zreduce
+        return self.__perm/zreduce
 
-    @property
-    def comp(self):
-        return self.__comp()
+    def comp(self,press):
+        if callable(self.__comp):
+            return self.__comp(press)
+        return self.__comp
 
     def __call__(self,press):
 
@@ -57,8 +50,8 @@ class PorMed():
         zperm = self.__zperm(press)
         comp  = self.__comp(press)
 
-        return ResRock(poro,xperm,yperm,zperm,comp)
-    
+        return ResRock(
+            xperm,yperm=yperm,zperm=zperm,poro=poro,comp=comp,press=press)
 
 if __name__ == "__main__":
 

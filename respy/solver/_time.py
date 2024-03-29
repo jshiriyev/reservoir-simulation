@@ -32,8 +32,11 @@ class Time():
 		return self._times[1:]-self._times[:-1]
 
 	def __iter__(self):
+		"""It starts from 0 time and iterates till the last time step."""
 
-		for index,(time,step) in enumerate(zip(self._times,self._steps)):
+		zipped = zip(self._times,self._steps)
+
+		for index,(time,step) in enumerate(zipped):
 
 			yield index,time,step
 

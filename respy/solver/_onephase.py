@@ -38,11 +38,11 @@ class OnePhase():
         self.set_block(grid,**kwargs)
         self.set_build(grid)
 
-        self.rrock  = rrock
-        self.fluid  = fluid
+        self.__rrock  = rrock
+        self.__fluid  = fluid
 
-        self.wconds = () if wconds is None else wconds
-        self.bconds = () if bconds is None else bconds
+        self.__wconds = () if wconds is None else wconds
+        self.__bconds = () if bconds is None else bconds
 
     def set_block(self,grid,**kwargs):
 
@@ -62,11 +62,7 @@ class OnePhase():
         
         self.time = Time(*args,**kwargs)
 
-    def set_press(self):
-
-        self._press = numpy.zeros(self.shape)
-
-    def set_pzero(self,pzero=None,refp=None,grad=None):
+    def set_press(self,pzero=None,refp=None,grad=None):
         """Calculates the initial pressure
         
         pzero   : initial pressure in psi; If not defined, it will be
@@ -75,6 +71,8 @@ class OnePhase():
         refp    : reference point (depth:ft,pressure:psi)
         grad    : fluid hydrostatic gradient, psi/ft
         """
+
+        self._press = numpy.zeros(self.shape)
 
         if pzero is None:
             pzero = refp[1]+grad*(self.block.depth-refp[0])
@@ -86,11 +84,11 @@ class OnePhase():
         if press is None:
             press = self._pzero
 
-        rrock  = self.get_rrock(press)
-        fluid  = self.get_fluid(press)
+        rrock  = self.rrock(press)
+        fluid  = self.fluid(press)
 
-        wconds = self.get_wconds(tcurr)
-        bconds = self.get_bconds(tcurr)
+        wconds = self.wconds(tcurr)
+        bconds = self.bconds(tcurr)
 
         if tstep is None:
             tstep = self.time._steps[0]
@@ -102,44 +100,44 @@ class OnePhase():
 
         return mat
 
-    def get_rrock(self,press):
+    def rrock(self,press):
 
         if self.rstat and press is None:
-            return self.rrock
+            return self.__rrock
 
         if self.rstat:
-            self.rrock._press = press
-            return self.rrock
+            self.__rrock._press = press
+            return self.__rrock
 
-        return self.rrock(press)
+        return self.__rrock(press)
 
-    def get_fluid(self,press):
+    def fluid(self,press):
 
         if self.fstat and press is None:
-            return self.fluid
+            return self.__fluid
 
         if self.fstat:
-            self.fluid._press = press
-            return self.fluid
+            self.__fluid._press = press
+            return self.__fluid
         
-        return self.fluid(press)
+        return self.__fluid(press)
 
-    def get_wconds(self,tcurr):
+    def wconds(self,tcurr):
 
-        return [cond for cond in self.wconds if self.islive(cond,tcurr)]
+        return [cond for cond in self.__wconds if self.islive(cond,tcurr)]
 
-    def get_bconds(self,tcurr):
+    def bconds(self,tcurr):
 
-        return [cond for cond in self.bconds if self.islive(cond,tcurr)]
+        return [cond for cond in self.__bconds if self.islive(cond,tcurr)]
 
     def solve(self,**kwargs):
         """Solves the linear system of equation"""
 
         Pn = numpy.copy(self._press[:,0])
         
-        for n,tcurr,tstep in self.time:
+        for index,tcurr,tstep in self.time:
 
-            if n==0 or not self.tstat:
+            if index==0 or not self.tstat:
                 mat = self(Pn,tcurr,tstep)
 
             if not self.tstat:
@@ -147,9 +145,9 @@ class OnePhase():
 
             Pn = mat.imppress(Pn)
 
-            print(f"{n:10}",Pn.flatten())
+            print(f"{index:10}",Pn.flatten())
             
-            self._press[:,n+1] = Pn
+            self._press[:,index+1] = Pn
 
             Pn = Pn.reshape((-1,1))
 
@@ -165,6 +163,9 @@ class OnePhase():
 
             if jacobian is None:
                 Pk = mat.imppress(Pn)
+            elif jacobian is True:
+                Jm = self.jacobian(Pk,tcurr,tstep,Pn)
+                Pk = Pk+np.linalg.solve(Jm,-Rv)
             else:
                 Jm = jacobian(Pk,tstep,tcomp)
                 Pk = Pk+np.linalg.solve(Jm,-Rv)
@@ -176,7 +177,7 @@ class OnePhase():
             if np.linalg.norm(Rv,2)<tol:
                 break
 
-            mat = self.get_matrix(Pk,tstep,tcomp)
+            mat = self(Pk,tcurr,tstep)
 
         else:
 
@@ -184,9 +185,34 @@ class OnePhase():
 
         return mat
 
+    def jacobian(self,press,tcurr,tstep,pprev,delta=10):
+
+        mat0 = self(press,tcurr,tstep)
+
+        resid0 = mat.impresid(pprev)
+
+        press1 = numpy.zeros(press.shape)
+        press2 = numpy.zeros(press.shape)
+
+        press1[0::2] = press[0::2]+delta
+        press2[1::2] = press[1::2]+delta
+
+        mat1 = self(press1,tcurr,tstep)
+        mat2 = self(press2,tcurr,tstep)
+
+        resid1 = mat1.impresid(pprev)
+        resid2 = mat2.impresid(pprev)
+
+        vector = numpy.zeros(press.shape)
+
+        vector[0::2] = (resid1-resid0)/delta
+        vector[1::2] = (resid2-resid0)/delta
+
+        return self.build.get_diag(vector)
+
     @property
     def pzero(self):
-        return self._pzero/6894.76
+        return self._press[:,0]/6894.76
 
     @property
     def press(self):
@@ -202,11 +228,11 @@ class OnePhase():
 
     @property
     def rstat(self):
-        return not callable(self.rrock)
+        return not callable(self.__rrock)
 
     @property
     def fstat(self):
-        return not callable(self.fluid)
+        return not callable(self.__fluid)
 
     @staticmethod
     def islive(cond,tcurr):

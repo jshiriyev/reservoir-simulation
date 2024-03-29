@@ -41,8 +41,8 @@ class Gas():
 
         self._temp  = None if temp is None else temp*(5./9)
 
-        self._zfact = zfact
-        self._visc  = visc
+        self.__zfact = zfact
+        self.__visc  = visc
 
     @property
     def spgr(self):
@@ -74,13 +74,50 @@ class Gas():
         """Returns reduced temperature (class property)."""
         return self.temp/self.tcrit
 
-    @property
-    def zfact(self):
-        return self.__zfact()
+    def pred(self,press):
+        """Returns reduced pressure values for input pressure values in psi."""
+        return press/self.pcrit
 
-    @property
-    def visc(self):
-        return self.__visc()
+    def zfact(self,press):
+        """Returns z-factor and (dz/dp) for given pressure values. If z is
+        constant, then it return z value and 0 for (dz/dp)."""
+        if callable(self.__zfact):
+            return self.__zfact(press)
+        return self.__zfact,0
+
+    def visc(self,press,*args):
+        """Calculates pressure and temperature dependent viscosity in cp"""
+        if callable(self.__visc):
+            return self.__visc(press,*args)
+        return self.__visc
+
+    def rho(self,press,zfact):
+        """Returns density value in lb/ft3"""
+        return (press*self.molw)/(zfact*10.731577089016*self.temp)
+
+    def spvol(self,press,zfact):
+        """Returns specific volume in ft3/lb"""
+        return (zfact*10.731577089016*self.temp)/(press*self.molw)
+
+    def comp(self,press,zfact,zprime):
+        """Returns isothermal compressibility coefficient."""
+
+        if not callable(self.__zfact):
+            if self.__zfact == 0:
+                return 1/press
+            return
+
+        zfact = self.__zfact
+
+        return 1/(1+(0.27*self.pred(press))/(zfact**2*self.tred)*zprime)/press
+
+    def fvf(self,press,zfact):
+        """Returns Gas Formation Volume Factor in ft3/scf"""
+        return 0.02827*zfact*self.temp/press
+
+    def fef(self,press,zfact):
+        """Returns gas expansion factor."""
+        return press/(0.02827*zfact*self.temp)
     
     def __call__(self,press):
         """
@@ -90,56 +127,14 @@ class Gas():
         press   : Pressure values where to calculate gas properties, psi
         """
 
-        z,zp = self.get_zfact(press)
-        visc = self.get_visc(press,z)
-        rho  = self.get_rho(press,z)
-        comp = self.get_comp(press,z,zp)
-        fvf  = self.get_fvf(press,z)
+        zfact,zprime = self.zfact(press)
 
-        return Fluid(visc,rho,comp,fvf)
+        visc = self.visc(press,zfact)
+        rho  = self.rho(press,zfact)
+        comp = self.comp(press,zfact,zprime)
+        fvf  = self.fvf(press,zfact)
 
-    def pred(self,press):
-        """Returns reduced pressure values for input pressure values in psi."""
-        return press/self.pcrit
-
-    def get_zfact(self,press):
-        """Returns z-factor and (dz/dp) for given pressure values. If z is
-        constant, then it return z value and 0 for (dz/dp)."""
-
-        if self.__zfact.const:
-            return self.__zfact(),Prop(0)
-
-        return self.__zfact(press)
-
-    def get_visc(self,press,zfact):
-        """Calculates pressure and temperature dependent viscosity in cp"""
-        return self.__visc(press,zfact)
-
-    def get_rho(self,press,zfact):
-        """Returns density value in lb/ft3"""
-        return (press*self.molw)/(zfact*10.731577089016*self.temp)
-
-    def get_spvol(self,press,zfact):
-        """Returns specific volume in ft3/lb"""
-        return (zfact*10.731577089016*self.temp)/(press*self.molw)
-
-    def get_comp(self,press,zfact,zprime):
-        """Returns isothermal compressibility coefficient."""
-
-        if isinstance(zprime,Prop):
-            if zprime()==0:
-                return 1/press
-            zprime = zprime()
-
-        return 1/(1+(0.27*self.pred(press))/(zfact**2*self.tred)*zprime)/press
-
-    def get_fvf(self,press,zfact):
-        """Returns Gas Formation Volume Factor in ft3/scf"""
-        return 0.02827*zfact*self.temp/press
-
-    def get_fef(self,press,zfact):
-        """Returns gas expansion factor."""
-        return press/(0.02827*zfact*self.temp)
+        return Fluid(visc,rho,comp,fvf,press)
 
     @staticmethod
     def get_molw(spgr):
