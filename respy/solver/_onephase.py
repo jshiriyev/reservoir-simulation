@@ -17,9 +17,10 @@ class OnePhase():
     The class solves for single phase reservoir flow in Rectangular Cuboids;
     """
 
-    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None,**kwargs):
+    def __init__(self,grid,rrock,fluid,wconds=None,bconds=None):
         """
-        grid   : It is a GridDelta instance.
+
+        grid   : GridDelta instance
 
         rrock  : It is a ResRock instance or any other rock class that
                  calculates rock properties at any given pressure.
@@ -35,7 +36,7 @@ class OnePhase():
 
         """
 
-        self.set_block(grid,**kwargs)
+        self.set_block(grid)
         self.set_build(grid)
 
         self.__rrock  = rrock
@@ -46,38 +47,11 @@ class OnePhase():
 
     def set_block(self,grid,**kwargs):
 
-        if kwargs.get("depth") is not None:
-            kwargs["depth"] *= 0.3048
-
-        if kwargs.get("tcomp") is not None:
-            kwargs["tcomp"] /= 6894.76
-
-        self.block = Block(grid,**kwargs)
+        self.block = Block(grid,depth=depth,tcomp=tcomp)
 
     def set_build(self,grid):
 
         self.build = Build(grid)
-
-    def set_time(self,*args,**kwargs):
-        
-        self.time = Time(*args,**kwargs)
-
-    def set_press(self,pzero=None,refp=None,grad=None):
-        """Calculates the initial pressure
-        
-        pzero   : initial pressure in psi; If not defined, it will be
-                  calculated from reference point and reservoir rock depths.
-
-        refp    : reference point (depth:ft,pressure:psi)
-        grad    : fluid hydrostatic gradient, psi/ft
-        """
-
-        self._press = numpy.zeros(self.shape)
-
-        if pzero is None:
-            pzero = refp[1]+grad*(self.block.depth-refp[0])
-
-        self._press[:,0] = pzero*6894.76
 
     def __call__(self,press=None,tcurr=0,tstep=None):
 
@@ -211,18 +185,6 @@ class OnePhase():
         return self.build.get_diag(vector)
 
     @property
-    def pzero(self):
-        return self._press[:,0]/6894.76
-
-    @property
-    def press(self):
-        return self._press/6894.76
-
-    @property
-    def shape(self):
-        return (self.block.nums,self.time.nums+1)
-
-    @property
     def tstat(self):
         return all((self.rstat,self.fstat))
 
@@ -233,6 +195,10 @@ class OnePhase():
     @property
     def fstat(self):
         return not callable(self.__fluid)
+
+    @staticmethod
+    def isstat(prop):
+        return not callable(prop)
 
     @staticmethod
     def islive(cond,tcurr):

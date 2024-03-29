@@ -27,15 +27,15 @@ class ResInit():
 		self.peow = peow
 		self.peog = peog
 
-	def waterpressure(self,depth):
+	def wpress(self,depth):
 		"""pressure of water phase at input depth"""
 		return self.pwwoc+self.gradw*(depth-self.DWOC)
 
-	def oilpressure(self,depth):
+	def opress(self,depth):
 		"""pressure of oleic phase at input depth"""
 		return self.pwwoc+self.peow+self.grado*(depth-self.DWOC)
 
-	def gaspressure(self,depth):
+	def gpress(self,depth):
 		"""pressure of gas phase at input depth"""
 		return self.pogoc+self.peog+self.gradg*(depth-self.DGOC)
 
@@ -57,12 +57,12 @@ class ResInit():
 	@property
 	def pogoc(self):
 		"""oil pressure at gas-oil-contact"""
-		return self.oilpressure(self.DGOC)
+		return self.opress(self.DGOC)
 
 	@property
 	def pggoc(self):
 		"""gas pressure at gas-oil-contact"""
-		return self.gaspressure(self.DGOC)
+		return self.gpress(self.DGOC)
 
 	@property
 	def fwl(self):
@@ -138,8 +138,8 @@ class ResInit():
 
 		depth = numpy.asarray(depth)
 
-		pw = self.waterpressure(depth)
-		po = self.oilpressure(depth)
+		pw = self.wpress(depth)
+		po = self.opress(depth)
 
 		Sw = pcow.idrainage(po-pw)
 
@@ -159,9 +159,9 @@ class ResInit():
 
 		depth = numpy.asarray(depth)
 
-		pw = self.waterpressure(depth)
-		po = self.oilpressure(depth)
-		pg = self.gaspressure(depth)
+		pw = self.wpress(depth)
+		po = self.opress(depth)
+		pg = self.gpress(depth)
 
 		Sl = pcog.idrainage(pg-po)
 		Sw = pcow.idrainage(po-pw)
@@ -181,8 +181,8 @@ class ResInit():
 
 		depth = numpy.asarray(depth)
 
-		pw = self.waterpressure(depth)
-		pg = self.gaspressure(depth)
+		pw = self.wpress(depth)
+		pg = self.gpress(depth)
 
 		Sw = pcgw.idrainage(pg-pw)
 
