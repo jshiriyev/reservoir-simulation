@@ -1,6 +1,6 @@
 import numpy
 
-class ResInit():
+class ZeroState():
 
 	patm = 14.7
 
@@ -74,9 +74,9 @@ class ResInit():
 		Saturation values are calculated at any depth values
 
 		depth 	: depth where to calculate saturation values
-		pcow 	: oil-water capillary pressure model
-		pcog 	: oil-gas capillary pressure model
-		pcgw	: gas-water capillary pressure model
+		pcow 	: oil-water drainage capillary pressure model
+		pcog 	: oil-gas drainage capillary pressure model
+		pcgw	: gas-water drainage capillary pressure model
 		
 		returns water, oil and gas saturation values.
 

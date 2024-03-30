@@ -16,7 +16,6 @@ from scipy.sparse import csr_matrix as csr
 # from ._cappres import ScanCurves
 
 """
-
 Theoretical Models:
  1. Finalize One-Phase Linear flow
  2. Finalize One-Phase Radial flow
@@ -39,8 +38,9 @@ Benchmark:
 
 """
 
-class SimSim():
-    """IMPES Solution"""
+class SimSol():
+    """Simultanous Solution"""
+
     def __init__(self,res,fluids,relperm,wells):
 
         self.PorRock = PorRock("rectangle")()

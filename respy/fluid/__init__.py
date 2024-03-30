@@ -9,8 +9,16 @@
 # with open(filepath,"r") as jsonfile:
 #     library = json.load(jsonfile)
 
-from ._fluid import Fluid
+from . import phaseg as Gas
+from . import phaseo as Oil
+from . import phasew as Water
 
-# from ._gas import Gas
-# from ._oil import Oil
-# from ._water import Water
+from . import cpress as CapPress
+
+from . import rperm as RelPerm
+
+from ._phase import Phase
+
+from ._single import OnePhase
+
+from ._blackoil import BlackOil

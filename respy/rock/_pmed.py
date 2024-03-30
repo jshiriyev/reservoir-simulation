@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
 import numpy
 
-class ResRock():
+class PorMed():
 	"""
 	Base class that defines constant reservoir rock properties
 	at the given pressure and temperature.

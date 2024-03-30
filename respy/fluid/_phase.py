@@ -6,13 +6,13 @@ if __name__ == "__main__":
 
 import numpy
 
-class Fluid():
+class Phase():
     """
     A class that defines constant fluid properties at the
     given pressure and temperature.
     """
 
-    def __init__(self,visc=None,rho=None,comp=None,fvf=None,rperm=1.0,press=None):
+    def __init__(self,*,visc=None,rho=None,comp=None,fvf=None,rperm=1.0,press=None):
         """
         Initializes a fluid with certain viscosity, density,
         compressibility and formation volume factor:

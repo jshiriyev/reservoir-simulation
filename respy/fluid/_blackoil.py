@@ -4,7 +4,7 @@ class BlackOil():
 
 		for index,arg in enumerate(args):
 
-			setattr(self,f"fluid{index}",arg)
+			setattr(self,f"phase{index}",arg)
 
 	def set_rperm(self,*args):
 
@@ -12,7 +12,7 @@ class BlackOil():
 
 			setattr(self,f"rperm{index}",args[index])
 
-	def set_capillary(self,*args):
+	def set_capil(self,*args):
 
 		pass
 
