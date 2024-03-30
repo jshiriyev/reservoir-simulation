@@ -12,7 +12,7 @@ class Fluid():
     given pressure and temperature.
     """
 
-    def __init__(self,visc=None,rho=None,comp=None,fvf=None,press=None):
+    def __init__(self,visc=None,rho=None,comp=None,fvf=None,rperm=1.0,press=None):
         """
         Initializes a fluid with certain viscosity, density,
         compressibility and formation volume factor:
@@ -21,6 +21,8 @@ class Fluid():
         rho     : density of fluid, lb/ft3
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
+
+        rperm   : relative permeability value, default is 1, dimensionless
         press   : pressure at which properties are defined; if it is None,
                   properties are pressure independent, psi
 
@@ -30,9 +32,14 @@ class Fluid():
         
         self._visc  = self.get_prop(visc,0.001)
         self._rho   = self.get_prop(rho,16.0185)
+
+        self._grad  = self._rho*9.807
+        
         self._comp  = self.get_prop(comp,1/6894.76)
         self._fvf   = self.get_prop(fvf)
-        self._press = self.get_prop(press,6894.76)
+
+        self._rperm = self.get_prop(rperm)
+        self._press = self.get_prop(press,6894.76)        
 
     @property
     def visc(self):
@@ -43,6 +50,10 @@ class Fluid():
     def rho(self):
         if self._rho is not None:
             return self._rho/16.0185
+
+    @property
+    def grad(self):
+        return self._grad
 
     @property
     def comp(self):

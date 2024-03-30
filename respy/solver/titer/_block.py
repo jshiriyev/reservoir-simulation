@@ -108,15 +108,15 @@ class Block(RecCube):
         if "depth" not in self.prop:
             return 0
 
-        return fluid._rho*9.807*self.depth
+        return fluid._grad*self.depth
 
     def get_fluid_power(self,fluid):
         """Returns fluid phase potential."""
-        return self.fluid+fluid._press
+        return self.fhead+fluid._press
 
-    def get_fluid_mobil(self,fluid,rperm=1):
+    def get_fluid_mobil(self,fluid):
         """Returns fluid phase mobility."""
-        return (rperm)/(fluid._visc*fluid._fvf)
+        return (fluid._rperm)/(fluid._visc*fluid._fvf)
 
     def get_block_accum(self,tdelta):
         """Returns accumulation multiplied compressibility (A.ct)."""
