@@ -12,7 +12,7 @@ class Phase():
     given pressure and temperature.
     """
 
-    def __init__(self,*,visc=None,rho=None,comp=None,fvf=None,rperm=1.0,press=None):
+    def __init__(self,*,visc=None,rho=None,comp=None,fvf=None,press=None,satur=1.0,rperm=1.0):
         """
         Initializes a fluid with certain viscosity, density,
         compressibility and formation volume factor:
@@ -22,9 +22,11 @@ class Phase():
         comp    : compressibility of fluid, 1/psi
         fvf     : formation volume factor, ft3/scf
 
-        rperm   : relative permeability value, default is 1, dimensionless
         press   : pressure at which properties are defined; if it is None,
                   properties are pressure independent, psi
+        
+        satur   : saturation value, default is 1, dimensionless
+        rperm   : relative permeability value, default is 1, dimensionless
 
         For any given pressure and temperature values.
 
@@ -38,8 +40,11 @@ class Phase():
         self._comp  = self.get_prop(comp,1/6894.76)
         self._fvf   = self.get_prop(fvf)
 
+        self._press = self.get_prop(press,6894.76)
+        self._satur = self.get_prop(satur)
         self._rperm = self.get_prop(rperm)
-        self._press = self.get_prop(press,6894.76)        
+
+        self._mobil = self.get_mobil()
 
     @property
     def visc(self):
@@ -68,6 +73,17 @@ class Phase():
     def press(self):
         if self._press is not None:
             return self._press/6894.76
+
+    @property
+    def mobil(self):
+        if self._mobil is not None:
+            return self._mobil*6894.76*(24*60*60)
+
+    def get_mobil(self):
+        try:
+            return (self._rperm)/(self._visc*self._fvf)
+        except TypeError:
+            return
 
     @staticmethod
     def get_prop(prop,conv=1.):
