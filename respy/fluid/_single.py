@@ -24,3 +24,12 @@ class OnePhase():
 		self.phase._press = press
 
 		return self.phase
+
+	@property
+    def isstatic(self):
+        return not callable(self.phase)
+
+    @property
+    def isdynamic(self):
+    	return callable(self.phase)
+    

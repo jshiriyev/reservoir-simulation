@@ -4,11 +4,9 @@ if __name__ == "__main__":
     # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
     sys.path.append(r'C:\Users\3876yl\Documents\respy')
 
-from respy.rinit._time import Time
-
-from respy.fluid import OnePhase, BlackOil
-
-from respy.solver._onephase import OnePhase
+from respy.rrock import GridDelta,ResRock
+from respy.fluid import OnePhase,BlackOil
+from respy.setup import Conds,Time,ResInit
 
 class BaseSolver():
     """
@@ -36,9 +34,9 @@ class BaseSolver():
                  fluid phases may exist with only one mopbile phase; the
                  rest of phases is at irreducible saturation, not mobile.
 
-        wconds : tuple of WellCond instance.
+        wcond : tuple of WellCond instance.
 
-        bconds : tuple of BoundCond instance.
+        bcond : tuple of BoundCond instance.
 
         """
 
@@ -55,21 +53,13 @@ class BaseSolver():
 
         self.fluid = fluid
 
-    def set_wconds(self,wconds=None):
+    def set_wcond(self,*wells):
 
-        self.__wconds = () if wconds is None else wconds
+        self.wcond = Conds(*wells)
 
-    def get_wconds(self,tcurr):
+    def set_bcond(self,*bounds):
 
-        return [cond for cond in self.__wconds if self.islive(cond,tcurr)]
-
-    def set_bconds(self,bconds=None):
-
-        self.__bconds = () if bconds is None else bconds
-
-    def get_bconds(self,tcurr):
-
-        return [cond for cond in self.__bconds if self.islive(cond,tcurr)]
+        self.bcond = Conds(*bounds)        
 
     def set_time(self,*args,**kwargs):
         
@@ -108,16 +98,15 @@ class BaseSolver():
         if press is None:
             press = self._pzero
 
-        rrock  = self.rrock(press)
-        fluid  = self.fluid(press)
-
-        wconds = self.get_wconds(tcurr)
-        bconds = self.get_bconds(tcurr)
+        rrock = self.rrock(press)
+        fluid = self.fluid(press)
+        wcond = self.wcond(tcurr)
+        bcond = self.bcond(tcurr)
 
         if tstep is None:
             tstep = self.time._steps[0]
 
-        return rrock,fluid,wconds,bconds
+        return rrock,fluid,wcond,bcond,tstep
 
     def solve(self,*args,**kwargs):
 
@@ -144,31 +133,13 @@ class BaseSolver():
         return (self.grid.nums,self.time.nums+1)
 
     @property
-    def tstat(self):
-        return all((self.rstat,self.fstat))
+    def isstatic(self):
+        return all((self.rrock.isstatic,self.fluid.isstatic))
 
     @property
-    def rstat(self):
-        return not callable(self.__rrock)
-
-    @property
-    def fstat(self):
-        return not callable(self.__fluid)
+    def isdynamic(self):
+        return all((self.rrock.isdynamic,self.fluid.isdynamic))
 
     @staticmethod
-    def isstat(prop):
+    def isstatic(prop):
         return not callable(prop)
-
-    @staticmethod
-    def islive(cond,tcurr):
-
-        if cond._start>tcurr:
-            return False
-
-        if cond._stop is None:
-            return True
-
-        if cond._stop<=tcurr:
-            return False
-
-        return True

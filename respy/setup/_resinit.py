@@ -1,6 +1,6 @@
 import numpy
 
-class ZeroState():
+class ResInit():
 
 	patm = 14.7
 

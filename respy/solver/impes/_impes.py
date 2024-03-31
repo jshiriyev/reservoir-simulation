@@ -27,9 +27,9 @@ class IMPES(BaseSolver):
 
     def __call__(self,press=None,tcurr=0,tstep=None):
 
-        rfc = super().__call__(press,tcurr,tstep)
+        env = super().__call__(press,tcurr,tstep)
 
-        vec = self.block(*rfc,tstep)
+        vec = self.block(*env)
 
         mat = self.build(vec)
 

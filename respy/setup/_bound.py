@@ -4,12 +4,12 @@ if __name__ == "__main__":
     # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
     sys.path.append(r'C:\Users\3876yl\Documents\respy')
 
-class BoundCond():
+class Boundary():
     """
     It is a boundary condition object used in the simulator.
     """
 
-    def __init__(self,face,*,start:float=0,stop:float=None,**kwargs):
+    def __init__(self,face:str,*,start:float=0,stop:float=None,**kwargs):
         """
         face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
 

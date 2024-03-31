@@ -5,7 +5,7 @@ if __name__ == "__main__":
 
 import numpy
 
-from respy.rock._rock import ResRock
+from respy.rrock._pmed import PorMed
 
 class ResRock():
 
@@ -14,7 +14,7 @@ class ResRock():
         Reservoir Rock System
         """
 
-        self.rrock = ResRock(*args,**kwargs)
+        self.rrock = PorMed(*args,**kwargs)
 
     def __call__(self,press):
 
@@ -24,6 +24,14 @@ class ResRock():
         self.rrock._press = press
 
         return self.rrock
+
+    @property
+    def isstatic(self):
+        return not callable(self.rrock)
+
+    @property
+    def isdynamic(self):
+        return callable(self.rrock)
 
 if __name__ == "__main__":
 
