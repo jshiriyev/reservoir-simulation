@@ -3,6 +3,7 @@
 *.db
 *.inc
 *.xlsx
+*.gif
 
 # Documentation
 *.html
