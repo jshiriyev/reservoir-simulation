@@ -10,9 +10,10 @@ class Steady():
 
         """
 
-        self._well  = well
         self._rock  = rock
         self._fluid = fluid
+        
+        self._well  = well
 
     def __call__(self,radii):
         """Returns reservoir pressure values for a constant flow rate
