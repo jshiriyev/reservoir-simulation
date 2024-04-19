@@ -53,13 +53,13 @@ class BaseSolver():
 
         self.fluid = fluid
 
-    def set_wcond(self,*wells):
+    def set_wcond(self,*args):
 
-        self.wcond = Conds(*wells)
+        self.wcond = Conds(*args)
 
-    def set_bcond(self,*bounds):
+    def set_bcond(self,*args):
 
-        self.bcond = Conds(*bounds)        
+        self.bcond = Conds(*args)        
 
     def set_time(self,*args,**kwargs):
         

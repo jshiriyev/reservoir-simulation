@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
 import numpy
 
-class PorMed():
+class PoMed():
 	"""
 	Base class that defines constant reservoir rock properties
 	at the given pressure and temperature.
@@ -54,6 +54,10 @@ class PorMed():
 		self._zperm = self._xperm*zreduce if zperm is None else self.set_prop(zperm,9.869233e-16)
 
 	@property
+	def perm(self):
+		return self.xperm
+
+	@property
 	def xperm(self):
 		if self._xperm is not None:
 			return self._xperm/9.869233e-16
@@ -68,6 +72,14 @@ class PorMed():
 		if self._zperm is not None:
 			return self._zperm/9.869233e-16
 
+	@property
+	def yreduce(self):
+		return numpy.mean(self._yperm/self._xperm).item()
+	
+	@property
+	def zreduce(self):
+		return numpy.mean(self._zperm/self._xperm).item()
+	
 	@property
 	def poro(self):
 		return self._poro
