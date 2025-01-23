@@ -1,3 +1,6 @@
+import os
+import sys
+
 import numpy
 
 def zfactor(critical_params:tuple,pressures:numpy.ndarray,temperature:float,derivative:bool=False,method:str="direct_method"):
@@ -17,6 +20,7 @@ def zfactor(critical_params:tuple,pressures:numpy.ndarray,temperature:float,deri
 	    numpy.ndarray: Z-factor, and if derivative is True, Z-prime values calculated for each pressure.
 	    
 	"""
+	sys.path.append(os.path.dirname(__file__))
 
 	method_parts = method.split('_')
 
@@ -24,12 +28,12 @@ def zfactor(critical_params:tuple,pressures:numpy.ndarray,temperature:float,deri
 
 	# Import the correct method class dynamically
 	try:
-		module = __import__(f'respy.fluid_props.phaseg.compressibility',fromlist=[method_class])
-		MethodClass = getattr(module, method_class)
+		module = __import__(f"_{method}")
+		mclass = getattr(module,method_class)
 	except (ImportError, AttributeError):
 		raise ValueError(f"Method '{method}' not found or invalid.")
 
 	# Create an instance of the class and calculate z-factor
-	method_instance = MethodClass(critical_params,temperature)
+	method_instance = mclass(critical_params,temperature)
 
 	return method_instance(pressures,derivative)

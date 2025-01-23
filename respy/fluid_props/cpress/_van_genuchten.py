@@ -9,15 +9,15 @@ class VanGenuchten():
 
         self.gamma = gamma
 
-    def imbibition(self,sw):
+    def imbibition(self,saturation):
 
-        saturation = (sw-self.irreducible)/(1-self.irreducible-self.residual)
+        saturation = (saturation-self.irreducible)/(1-self.irreducible-self.residual)
 
         return 1/self.gamma*(saturation**(-1/self.m)-1)**(1/self.n)
 
-    def iimbibition(self,cappres):
+    def inverse_imbibition(self,pressure):
         """Inverse imbibition calculation, saturation from capillary pressure."""
 
-        saturation = ((self.gamma*cappres)**self.n+1)**(-self.m)
+        saturation = ((self.gamma*pressure)**self.n+1)**(-self.m)
 
         return self.irreducible+saturation*(1-self.irreducible-self.residual)

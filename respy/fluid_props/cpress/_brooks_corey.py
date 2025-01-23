@@ -28,17 +28,17 @@ class BrooksCorey():
 
         return self.entry*Sstar**(-1/self.lamda)
 
-    def idrainage(self,cappres):
+    def inverse_drainage(self,pressure):
         """Calculates saturation values from capillary pressure for
         drainage scenario, inverse calculations.
         
-        cappres     : capillary pressure values
+        pressure     : capillary pressure values
 
         """
 
-        cappres = numpy.asarray(cappres)
+        pressure = numpy.asarray(pressure)
 
-        Sstar = (self.entry/cappres)**(self.lamda)
+        Sstar = (self.entry/pressure)**(self.lamda)
 
         return self.irreducible+Sstar*(1-self.irreducible)
 
@@ -52,16 +52,16 @@ class BrooksCorey():
 
         return self.entry*(Se**(-1/self.lamda)-1)
 
-    def iimbibition(self,cappres):
+    def inverse_imbibition(self,pressure):
         """Calculates saturation values for imbibition scenario,
         inverse calculations.
 
-        cappres     : capillary pressure values
+        pressure     : capillary pressure values
 
         """
 
-        cappres = numpy.asarray(cappres)
+        pressure = numpy.asarray(pressure)
 
-        Se = (cappres/self.entry+1)**(-self.lamda)
+        Se = (pressure/self.entry+1)**(-self.lamda)
 
         return self.irreducible+Se*(1-self.irreducible-self.residual)
