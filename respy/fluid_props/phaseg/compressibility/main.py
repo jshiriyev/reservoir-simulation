@@ -28,7 +28,7 @@ def zfactor(critical_params:tuple,pressures:numpy.ndarray,temperature:float,deri
 
 	# Import the correct method class dynamically
 	try:
-		module = __import__(f"_{method}")
+		module = __import__(method)
 		mclass = getattr(module,method_class)
 	except (ImportError, AttributeError):
 		raise ValueError(f"Method '{method}' not found or invalid.")
