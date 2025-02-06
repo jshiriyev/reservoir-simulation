@@ -1,9 +1,5 @@
 import sys
 
-if __name__ == "__main__":
-	# sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
-	sys.path.append(r'C:\Users\3876yl\Documents\respy')
-
 import numpy
 
 class GridDelta():
