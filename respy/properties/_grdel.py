@@ -27,7 +27,7 @@ class GridDelta():
 	"""Properties essential for the visualization of results:"""
 
 	@property
-	def nums3(self):
+	def nums(self):
 		"""Returns tuple of (xnums,ynums,znums)."""
 		return (self.xnums,self.ynums,self.znums)
 
