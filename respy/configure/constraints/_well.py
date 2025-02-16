@@ -1,29 +1,32 @@
-import sys
-
-if __name__ == "__main__":
-    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
-    sys.path.append(r'C:\Users\3876yl\Documents\respy')
-
-class Boundary():
+class Well():
     """
-    It is a boundary condition object used in the simulator.
+    It is a well condition object used in the simulator.
     """
 
-    def __init__(self,face:str,*,start:float=0,stop:float=None,**kwargs):
+    def __init__(self,block:tuple,*,axis:str="z",radius:float=1.0,skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
-        face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
+        block   : all block indices containing the well
+        axis    : (z) vertical or (x,y) horizontal well
 
-        start   : start time for implementing the boundary condition, days
-        stop    : stop time for implementing the boundary condition, days
+        radius  : well radius, ft
+        skin    : skin factor of the well, dimensionless
+
+        start   : start time for implementing the well condition, days
+        stop    : stop time for implementing the well condition, days
 
         Assign only one of the following conditions:
 
-        press   : constant pressure values, psi
-        orate   : constant flow boundary condition, 0 = no flow, bbl/day
-        wrate   : constant flow boundary condition, 0 = no flow, bbl/day
-        grate   : constant flow boundary condition, 0 = no flow, ft3/day
+        press   : constant bottom hole pressure, psi
+        orate   : constant oil rate
+        wrate   : constant water rate
+        grate   : constant gas rate
         """
-        self._face = face
+
+        self._block  = block
+        self._axis   = axis
+
+        self._radius = radius*0.3048
+        self._skin   = skin
 
         self._start  = start*(24*60*60)
         self._stop   = None if stop is None else stop*(24*60*60)
@@ -39,15 +42,23 @@ class Boundary():
                     self._cond = value*(0.3048**3)/(24*60*60)
                 break
 
-        self._prod = None
+        self._prod   = None
 
     @property
-    def face(self):
-        return self._face
+    def block(self):
+        return self._block
 
     @property
     def axis(self):
-        return self._face[0]
+        return self._axis
+
+    @property
+    def radius(self):
+        return self._radius/0.3048
+
+    @property
+    def skin(self):
+        return self._skin
 
     @property
     def start(self):
@@ -73,12 +84,11 @@ class Boundary():
     @property
     def prod(self):
         return self._prod*(3.28084**3)*(24*60*60)*6894.76
-    
 
 if __name__ == "__main__":
 
-    bcond = BoundCond("xmin",press=500)
+    wcond = WellCond(0.5,(3,),"z",orate=500,start=3)
 
-    print(bcond.cond)
-    print(bcond.face)
-    print(bcond.sort)
+    print(wcond.sort,wcond.cond)
+
+    print(wcond.start,wcond._start)

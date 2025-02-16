@@ -1,8 +1,6 @@
-import sys
-
 import numpy
 
-class PoMed():
+class PorMed():
 	"""
 	Base class that defines constant reservoir rock properties
 	at the given pressure and temperature.

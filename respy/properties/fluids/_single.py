@@ -1,8 +1,3 @@
-import sys
-
-if __name__ == "__main__":
-	sys.path.append(r'C:\Users\3876yl\Documents\respy')
-
 from respy.fluid._phase import Phase
 
 class OnePhase():

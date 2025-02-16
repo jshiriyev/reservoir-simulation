@@ -1,10 +1,8 @@
 import numpy
 
-# from .directory._browser import Browser
+class Locator():
 
-class WellStock():
-
-    def __iter__(self):
+    def __iter__(self,grid):
 
         wells = zip(self.Wells.Trajectory.tracks,
             self.Wells.consbhp,
@@ -13,6 +11,10 @@ class WellStock():
 
         for index,(track,flag,limit) in enumerate(wells):
             pass
+
+    def __call__(self,trajectory):
+        """It should return grid indices which contains the well"""
+        return grid_indices_which_contains_the_well
 
     def get_wconds(self):
 

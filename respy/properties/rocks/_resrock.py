@@ -1,5 +1,3 @@
-import sys
-
 import numpy
 
 from respy.rrock._pmed import PorMed

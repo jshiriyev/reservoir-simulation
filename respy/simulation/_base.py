@@ -1,9 +1,3 @@
-import sys
-
-if __name__ == "__main__":
-    # sys.path.append(r'C:\Users\javid.shiriyev\Documents\respy')
-    sys.path.append(r'C:\Users\3876yl\Documents\respy')
-
 from respy.rrock import GridDelta,ResRock
 from respy.fluid import OnePhase,BlackOil
 from respy.setup import Conds,Time,ResInit
