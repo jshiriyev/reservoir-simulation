@@ -31,3 +31,15 @@ class GridBase():
 	@zdelta.setter
 	def zdelta(self,value):
 		self._zdelta = numpy.asarray(value).flatten().astype(numpy.float64)*0.3048
+
+if __name__ == "__main__":
+
+	gb = GridBase([2,2,3],[3,4],5)
+
+	print(gb.xdelta)
+	print(gb.ydelta)
+	print(gb.zdelta)
+
+	print(gb._xdelta)
+	print(gb._ydelta)
+	print(gb._zdelta)
