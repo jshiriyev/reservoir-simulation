@@ -2,7 +2,6 @@ import numpy
 
 class Time():
 	"""Time class for the reservoir simulation"""
-
 	def __init__(self,delta:float,total:float):
 		"""Defining the time settings for the simulator
 
@@ -10,20 +9,46 @@ class Time():
 		total   : total simulation time defined in days
 		"""
 
-		self._delta = delta*24*60*60
-		self._total = total*24*60*60
+		self.delta = delta
+		self.total = total
 
-		self._times = self.get_times()
-		self._steps = self.get_steps()
+		self.times = None
+		self.steps = None
 
-	def get_times(self):
-		"""Returns linearly spaced time data."""
-		return numpy.arange(
+	@property
+	def delta(self):
+		return self._delta/(24*60*60)
+
+	@delta.setter
+	def delta(self,value):
+		self._delta = value*24*60*60
+
+	@property
+	def total(self):
+		return self._total/(24*60*60)
+
+	@total.setter
+	def total(self,value):
+		self._total = value*24*60*60
+
+	@property
+	def times(self):
+		return self._times/(24*60*60)
+
+	@times.setter
+	def times(self,value):
+		"""Sets linearly spaced time data."""
+		self._times = np.arange(
 			self._total+self._delta/2,step=self._delta)
 
-	def get_steps(self):
-		"""Returns the time steps in the given time array."""
-		return self._times[1:]-self._times[:-1]
+	@property
+	def steps(self):
+		return self._steps/(24*60*60)
+
+	@steps.setter
+	def steps(self,value):
+		"""Sets the time steps in the given time array."""
+		self._steps = self._times[1:]-self._times[:-1]
 
 	def __iter__(self):
 		"""It starts from 0 time and iterates till the last time step."""
@@ -33,22 +58,6 @@ class Time():
 		for index,(time,step) in enumerate(zipped):
 
 			yield index,time,step
-
-	@property
-	def delta(self):
-		return self._delta/(24*60*60)
-
-	@property
-	def total(self):
-		return self._total/(24*60*60)
-
-	@property
-	def times(self):
-		return self._times/(24*60*60)
-
-	@property
-	def steps(self):
-		return self._steps/(24*60*60)
 
 	@property
 	def nums(self):

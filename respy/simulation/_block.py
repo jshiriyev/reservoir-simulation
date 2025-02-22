@@ -60,9 +60,9 @@ class Block(RecCube):
         yneg,ypos = self.yneg,self.ypos
         zneg,zpos = self.zneg,self.zpos
 
-        xrmean = self.get_harmonic_mean(xneg.xflow,xpos.xflow)
-        yrmean = self.get_harmonic_mean(yneg.yflow,ypos.yflow)
-        zrmean = self.get_harmonic_mean(zneg.zflow,zpos.zflow)
+        xrmean = self.mean_harmonic(xneg.xflow,xpos.xflow)
+        yrmean = self.mean_harmonic(yneg.yflow,ypos.yflow)
+        zrmean = self.mean_harmonic(zneg.zflow,zpos.zflow)
 
         xfmean = self.get_upwinding_mean(
             xneg.mobil,xpos.mobil,xneg.power,xpos.power)
@@ -123,13 +123,13 @@ class Block(RecCube):
 
         if wcond.axis == "x":
             dhk = well.xedge*numpy.sqrt(well.yperm*well.zperm)
-            req = self.get_equiv_radius(well.yperm,well.zperm,well.yedge,well.zedge)
+            req = self.requivalent(well.yperm,well.zperm,well.yedge,well.zedge)
         elif wcond.axis == "y":
             dhk = well.yedge*numpy.sqrt(well.zperm*well.xperm)
-            req = self.get_equiv_radius(well.zperm,well.xperm,well.zedge,well.xedge)
+            req = self.requivalent(well.zperm,well.xperm,well.zedge,well.xedge)
         elif wcond.axis == "z":
             dhk = well.zedge*numpy.sqrt(well.xperm*well.yperm)
-            req = self.get_equiv_radius(well.xperm,well.yperm,well.xedge,well.yedge)
+            req = self.requivalent(well.xperm,well.yperm,well.xedge,well.yedge)
 
         wcond._prod = (2*numpy.pi*dhk)/(numpy.log(req/wcond.radius)+wcond.skin)
         wcond._prod *= well.mobil
@@ -155,17 +155,17 @@ class Block(RecCube):
         return self.rcomp+self.fcomp
 
     @staticmethod
-    def get_weighted_mean(term1,term2):
+    def mean_weighted(term1,term2):
         """Returns weighted mean of two terms, term1 and term 2."""
         return (term1+term2)/2
 
     @staticmethod
-    def get_harmonic_mean(term1,term2):
+    def mean_harmonic(term1,term2):
         """Returns harmonic mean of two terms, term1 and term 2."""
         return (2*term1*term2)/(term1+term2)
 
     @staticmethod
-    def get_geometric_mean(term1,term2):
+    def mean_geometric(term1,term2):
         """Returns geometric mean of two terms, term1 and term 2."""
         return numpy.sqrt(term1*term2)
 
@@ -181,7 +181,7 @@ class Block(RecCube):
         return term
 
     @staticmethod
-    def get_equiv_radius(perm1,perm2,edge1,edge2):
+    def requivalent(perm1,perm2,edge1,edge2):
         """Returns equivalent radius of grids that contains well."""
         sqrt21 = numpy.power(perm2/perm1,1/2)*numpy.power(edge1,2)
         sqrt12 = numpy.power(perm1/perm2,1/2)*numpy.power(edge2,2)

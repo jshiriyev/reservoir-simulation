@@ -22,14 +22,14 @@ class Well():
         grate   : constant gas rate
         """
 
-        self._block  = block
-        self._axis   = axis
+        self.block  = block
+        self.axis   = axis
 
-        self._radius = radius*0.3048
-        self._skin   = skin
+        self.radius = radius
+        self.skin   = skin
 
-        self._start  = start*(24*60*60)
-        self._stop   = None if stop is None else stop*(24*60*60)
+        self.start  = start
+        self.stop   = stop
 
         for key,value in kwargs.items():
             if value is not None:
@@ -45,28 +45,28 @@ class Well():
         self._prod   = None
 
     @property
-    def block(self):
-        return self._block
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
     def radius(self):
         return self._radius/0.3048
 
-    @property
-    def skin(self):
-        return self._skin
+    @radius.setter
+    def radius(self,value):
+        self._radius = value*0.3048
 
     @property
     def start(self):
         return self._start/(24*60*60)
 
+    @start.setter
+    def start(self,value):
+        self._start = value*(24*60*60)
+
     @property
     def stop(self):
         return None if self._stop is None else self._stop/(24*60*60)
+
+    @stop.setter
+    def stop(self,value):
+        self._stop = None if value is None else value*(24*60*60)
 
     @property
     def sort(self):
