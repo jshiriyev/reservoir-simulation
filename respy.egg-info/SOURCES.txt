@@ -8,7 +8,14 @@ respy.egg-info/requires.txt
 respy.egg-info/top_level.txt
 respy/configure/__init__.py
 respy/configure/_initiate.py
-respy/configure/_time.py
+respy/configure/constraints/__init__.py
+respy/configure/constraints/_conds.py
+respy/configure/constraints/_edge.py
+respy/configure/constraints/_locator.py
+respy/configure/constraints/_well.py
+respy/configure/numericals/__init__.py
+respy/configure/numericals/_regular.py
+respy/configure/numericals/_time.py
 respy/grids/__init__.py
 respy/grids/_base.py
 respy/grids/_delta.py

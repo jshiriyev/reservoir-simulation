@@ -6,9 +6,7 @@
 # 1. Input Data
 
 # 2. Gridding
-from .grids import Grids
-from .grids import GridDelta
-from .grids import GridRegular
+from .grids import Grids, GridDelta, GridRegular
 
 # 3. Property Calculation
 # from .properties import phaseg
@@ -17,7 +15,7 @@ from .grids import GridRegular
 # from .properties import fluid
 
 # 4. Configuration
-from .configure import Well
+from .configure import Well, Time
 
 # 5. Simulation
 # from . import solver

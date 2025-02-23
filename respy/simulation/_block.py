@@ -64,13 +64,13 @@ class Block(RecCube):
         yrmean = self.mean_harmonic(yneg.yflow,ypos.yflow)
         zrmean = self.mean_harmonic(zneg.zflow,zpos.zflow)
 
-        xfmean = self.get_upwinding_mean(
+        xfmean = self.mean_upwinding(
             xneg.mobil,xpos.mobil,xneg.power,xpos.power)
 
-        yfmean = self.get_upwinding_mean(
+        yfmean = self.mean_upwinding(
             yneg.mobil,ypos.mobil,yneg.power,ypos.power)
 
-        zfmean = self.get_upwinding_mean(
+        zfmean = self.mean_upwinding(
             zneg.mobil,zpos.mobil,zneg.power,zpos.power)
 
         return (acvect,xrmean*xfmean,yrmean*yfmean,zrmean*zfmean,self.fhead)
@@ -170,7 +170,7 @@ class Block(RecCube):
         return numpy.sqrt(term1*term2)
 
     @staticmethod
-    def get_upwinding_mean(term1,term2,ppot1,ppot2):
+    def mean_upwinding(term1,term2,ppot1,ppot2):
         """Returns upwinding mean of two terms, term1 and term 2
         for the given phase potential values, ppot1 and ppot2."""
         term = term1.copy()

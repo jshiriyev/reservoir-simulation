@@ -1,8 +1,13 @@
 # preprocessing folder
 
-# from .constraints._edge import Edge
-from .constraints._well import Well
+# 1. Reservoir Initialization
 
-# from .constraints._locator import Locator
+# 2. Time Settings
+from .numericals import Time
+from .numericals import regular
 
-# from .constraints._schedule import Schedule
+# 3. Well and Boundary Constraints
+# from .constraints import Edge
+from .constraints import Well
+# from .constraints import Locator
+# from .constraints import Schedule
