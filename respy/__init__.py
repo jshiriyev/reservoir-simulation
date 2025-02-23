@@ -11,11 +11,10 @@ from .grids import GridDelta
 from .grids import GridRegular
 
 # 3. Property Calculation
-# from . import fluid_props
-# from .fluid_props import phaseg
-# from . import cappres
-# from . import relperm
-# from . import fluid
+# from .properties import phaseg
+# from .properties import cappres
+# from .properties import relperm
+# from .properties import fluid
 
 # 4. Configuration
 from .configure import Well
