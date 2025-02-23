@@ -87,7 +87,7 @@ class Well():
 
 if __name__ == "__main__":
 
-    wcond = WellCond(0.5,(3,),"z",orate=500,start=3)
+    wcond = Well(0.5,(3,),"z",orate=500,start=3)
 
     print(wcond.sort,wcond.cond)
 
