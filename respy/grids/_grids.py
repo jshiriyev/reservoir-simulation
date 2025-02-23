@@ -18,6 +18,10 @@ class Grids(GridBase):
         """
         super().__init__(xdelta,ydelta,zdelta)
 
+        self.xarea  = None # Placeholder for volume calculations
+        self.yarea  = None # Placeholder for volume calculations
+        self.zarea  = None # Placeholder for volume calculations
+
         self.volume = None # Placeholder for volume calculations
 
         self.table  = table
@@ -29,6 +33,30 @@ class Grids(GridBase):
             (self.xdelta,self.ydelta,self.zdelta)
             )
 
+    @property
+    def xarea(self):
+        return self._xarea*10.7639
+
+    @xarea.setter
+    def xarea(self,value):
+        self._xarea = self._ydelta*self._zdelta
+
+    @property
+    def yarea(self):
+        return self._yarea*10.7639
+
+    @yarea.setter
+    def yarea(self,value):
+        self._yarea = self._zdelta*self._xdelta
+
+    @property
+    def zarea(self):
+        return self._zarea*10.7639
+
+    @zarea.setter
+    def zarea(self,value):
+        self._zarea = self._xdelta*self._ydelta
+    
     @property
     def volume(self):
         """Returns the volume of grids in field units."""

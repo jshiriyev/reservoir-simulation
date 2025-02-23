@@ -1,60 +1,82 @@
 import numpy
 
-from respy.solver._rcube import RecCube
+from ._vector import Vector
 
-from respy.solver._vector import Vector
+class Block():
 
-class Block(RecCube):
-
-    def __init__(self,grid,**kwargs):
+    def __init__(self,grids):
         """Initialization of block (cell) calculation class."""
+        self.grids = grids
 
-        super().__init__(*grid(),**kwargs)
+    def __getattr__(self,key):
+        """Delegates attribute access to the underlying grid object."""
+        return getattr(self.grids,key)
 
-    def __call__(self,rrock,fluid,wconds=None,bconds=None,tdelta=1.):
+    def __call__(self,rrock,fluid,wconds=None,bconds=None,tstep=1.):
         """Returns pressure updated Vector instance."""
 
-        self.set_rrock(rrock) # permeability & transmissibility
-        self.set_fluid(fluid) # potential (power) & mobility
+        self.rrock = rrock # permeability and transmissibility
+        self.fluid = fluid # hydrostatic head, potential and mobility
 
         # accumulation & inter-block transmissibility
-        tvect = self.get_tvect(tdelta)
+        tvect = self.cell_vector(tstep)
 
         # well block productivity
-        wvect = self.get_wvect(wconds)
+        wvect = self.well_vector(wconds)
 
         # boundary block transmissibility
-        bvect = self.get_bvect(bconds)
+        bvect = self.edge_vector(bconds)
 
         return Vector(*tvect,wvect,bvect)
 
-    def set_rrock(self,rrock):
+    @rrock.setter
+    def rrock(self,rrock):
         """Sets reservoir rock permeability and transmissibility into the cell."""
+        self.xflow = rrock
+        self.yflow = rrock
+        self.zflow = rrock
 
-        self.xperm = rrock._xperm
-        self.yperm = rrock._yperm
-        self.zperm = rrock._zperm
-
-        self.xflow = self.get_rock_xflow()
-        self.yflow = self.get_rock_yflow()
-        self.zflow = self.get_rock_zflow()
-
-        self.eporo = rrock._poro
-        self.rcomp = rrock._comp
-
-    def set_fluid(self,fluid):
+    @fluid.setter
+    def fluid(self,fluid):
         """Sets fluid potential and mobility into the cell."""
+        self.hhead = fluid
+        self.power = fluid
+        self.mobil = fluid
 
-        self.fcomp = fluid._comp
+    @xflow.setter
+    def xflow(self,rrock):
+        """Setter for the rock transmissibility in x-direction."""
+        self._xflow = (rrock._xperm*self._xarea)/(self._xdelta)
 
-        self.fhead = self.get_fluid_hhead(fluid)
-        self.power = self.get_fluid_power(fluid)
-        self.mobil = self.get_fluid_mobil(fluid)
+    @yflow.setter
+    def yflow(self,rrock):
+        """Setter for the rock transmissibility in y-direction."""
+        self._yflow = (rrock._yperm*self._yarea)/(self._ydelta)
 
-    def get_tvect(self,tdelta):
+    @zflow.setter
+    def zflow(self,rrock):
+        """Setter for the rock transmissibility in z-direction."""
+        self._zflow = (rrock._zperm*self._zarea)/(self._zdelta)
+
+    @hhead.setter
+    def hhead(self,fluid):
+        """Setter for the fluid's hydrostatic head."""
+        self._hhead = fluid._grad*self._depth
+
+    @power.setter
+    def power(self,fluid):
+        """Setter for the fluid's phase potential."""
+        self._power = fluid._press+self._hhead
+
+    @mobil.setter
+    def mobil(self,fluid):
+        """Setter for the fluid's phase mobility."""
+        self._mobil = (fluid._rperm)/(fluid._visc*fluid._fvf)
+
+    def cell_vector(self,tstep):
         """Returns A.ct, Tx, Ty, and Tz in the form of flat arrays."""
 
-        acvect = self.get_block_accum(tdelta)
+        acvect = self.accumulation(tstep)
 
         xneg,xpos = self.xneg,self.xpos
         yneg,ypos = self.yneg,self.ypos
@@ -64,95 +86,76 @@ class Block(RecCube):
         yrmean = self.mean_harmonic(yneg.yflow,ypos.yflow)
         zrmean = self.mean_harmonic(zneg.zflow,zpos.zflow)
 
-        xfmean = self.mean_upwinding(
+        xfmean = self.upwinding(
             xneg.mobil,xpos.mobil,xneg.power,xpos.power)
 
-        yfmean = self.mean_upwinding(
+        yfmean = self.upwinding(
             yneg.mobil,ypos.mobil,yneg.power,ypos.power)
 
-        zfmean = self.mean_upwinding(
+        zfmean = self.upwinding(
             zneg.mobil,zpos.mobil,zneg.power,zpos.power)
 
-        return (acvect,xrmean*xfmean,yrmean*yfmean,zrmean*zfmean,self.fhead)
+        return (acvect,xrmean*xfmean,yrmean*yfmean,zrmean*zfmean,self.hhead)
 
-    def get_wvect(self,wconds):
-        """Returns productivity for all active wells."""
-        wconds = () if wconds is None else wconds
-        return [self.get_wprod(wcond) for wcond in wconds]
-
-    def get_bvect(self,bconds):
-        """Returns transmissibility for all active boundaries."""
-        bconds = () if bconds is None else bconds
-        return [self.get_bprod(bcond) for bcond in bconds]
-
-    def get_rock_xflow(self):
-        """Returns rock transmissibility in x-direction."""
-        return (self.xperm*self.xarea)/(self.xedge)
-
-    def get_rock_yflow(self):
-        """Returns rock transmissibility in y-direction."""
-        return (self.yperm*self.yarea)/(self.yedge)
-
-    def get_rock_zflow(self):
-        """Returns rock transmissibility in z-direction."""
-        return (self.zperm*self.zarea)/(self.zedge)
-
-    def get_fluid_hhead(self,fluid):
-        """Returns fluid hydrostatic head."""
-        if "depth" not in self.prop:
-            return 0
-
-        return fluid._grad*self.depth
-
-    def get_fluid_power(self,fluid):
-        """Returns fluid phase potential."""
-        return self.fhead+fluid._press
-
-    def get_fluid_mobil(self,fluid):
-        """Returns fluid phase mobility."""
-        return (fluid._rperm)/(fluid._visc*fluid._fvf)
-
-    def get_block_accum(self,tdelta):
+    def accumulation(self,tstep:float):
         """Returns accumulation multiplied compressibility (A.ct)."""
-        return self.volume*self.eporo*self.ccomp/tdelta
-
-    def get_wprod(self,wcond):
-        """Returns well transmissibility values for the given well condition."""
-
-        well = self[wcond.block]
-
-        if wcond.axis == "x":
-            dhk = well.xedge*numpy.sqrt(well.yperm*well.zperm)
-            req = self.requivalent(well.yperm,well.zperm,well.yedge,well.zedge)
-        elif wcond.axis == "y":
-            dhk = well.yedge*numpy.sqrt(well.zperm*well.xperm)
-            req = self.requivalent(well.zperm,well.xperm,well.zedge,well.xedge)
-        elif wcond.axis == "z":
-            dhk = well.zedge*numpy.sqrt(well.xperm*well.yperm)
-            req = self.requivalent(well.xperm,well.yperm,well.xedge,well.yedge)
-
-        wcond._prod = (2*numpy.pi*dhk)/(numpy.log(req/wcond.radius)+wcond.skin)
-        wcond._prod *= well.mobil
-        
-        return wcond
-
-    def get_bprod(self,bcond):
-        """Returns exterior block transmissibility values for the
-        given boundary condition."""
-
-        face = getattr(self,bcond.face)
-        flow = getattr(face,f"{bcond.axis}flow")
-
-        bcond._prod = flow*face.mobil
-
-        return bcond
+        return (self.volume*self.rrock.poro)/(tstep*86400)
 
     @property
-    def ccomp(self):
+    def compressibility(self):
         """Returns total compressibility."""
         if "tcomp" in self.prop:
             return self.tcomp
         return self.rcomp+self.fcomp
+
+    def well_vector(self,wconds):
+        """Returns productivity for all active wells."""
+        wconds = () if wconds is None else wconds
+        return [self.edge_productivity(wcond) for wcond in wconds]
+
+    def edge_vector(self,bconds):
+        """Returns transmissibility for all active boundaries."""
+        bconds = () if bconds is None else bconds
+        return [self.edge_productivity(bcond) for bcond in bconds]
+
+    def edge_productivity(self,well):
+        """Returns well transmissibility values for the given well condition."""
+
+        if well.axis=="x":
+            k1 = self.rrock.yperm[list(well.block)]
+            k2 = self.rrock.zperm[list(well.block)]
+            w1 = self.grids.ydelta[list(well.block)]
+            w2 = self.grids.zdelta[list(well.block)]
+            w3 = self.grids.xdelta[list(well.block)]
+        elif well.axis=='y':
+            k1 = self.rrock.xperm[list(well.block)]
+            k2 = self.rrock.zperm[list(well.block)]
+            w1 = self.grids.xdelta[list(well.block)]
+            w2 = self.grids.zdelta[list(well.block)]
+            w3 = self.grids.ydelta[list(well.block)]
+        elif well.axis=='z':
+            k1 = self.rrock.xperm[list(well.block)]
+            k2 = self.rrock.yperm[list(well.block)]
+            w1 = self.grids.xdelta[list(well.block)]
+            w2 = self.grids.ydelta[list(well.block)]
+            w3 = self.grids.zdelta[list(well.block)]
+
+        well.prod = (2*numpy.pi*w3*numpy.sqrt(k1*k2))/(
+            numpy.log(self.requivalent(k1,k2,w1,w2)/well.radius)+well.skin
+            )*self.mobil[list(well.block)]
+        
+        return well
+
+    def edge_productivity(self,edge):
+        """Returns exterior block transmissibility values for the
+        given boundary condition."""
+
+        face = getattr(self,edge.face)
+        flow = getattr(face,f"{edge.axis}flow")
+
+        edge._prod = flow*face.mobil
+
+        return edge
 
     @staticmethod
     def mean_weighted(term1,term2):
@@ -170,21 +173,15 @@ class Block(RecCube):
         return numpy.sqrt(term1*term2)
 
     @staticmethod
-    def mean_upwinding(term1,term2,ppot1,ppot2):
-        """Returns upwinding mean of two terms, term1 and term 2
-        for the given phase potential values, ppot1 and ppot2."""
-        term = term1.copy()
-
-        if term.shape[0]==ppot1.size:
-            term[ppot1<ppot2] = term2
-
-        return term
+    def upwinding(term1,term2,ppot1,ppot2):
+        """Computes the upwinded mean of two terms based on phase potential (ppot) values."""
+        return numpy.where(ppot1<ppot2,term2,term1)
 
     @staticmethod
-    def requivalent(perm1,perm2,edge1,edge2):
+    def requivalent(perm1,perm2,delta1,delta2):
         """Returns equivalent radius of grids that contains well."""
-        sqrt21 = numpy.power(perm2/perm1,1/2)*numpy.power(edge1,2)
-        sqrt12 = numpy.power(perm1/perm2,1/2)*numpy.power(edge2,2)
+        sqrt21 = numpy.power(perm2/perm1,1/2)*numpy.power(delta1,2)
+        sqrt12 = numpy.power(perm1/perm2,1/2)*numpy.power(delta2,2)
 
         quar21 = numpy.power(perm2/perm1,1/4)
         quar12 = numpy.power(perm1/perm2,1/4)
