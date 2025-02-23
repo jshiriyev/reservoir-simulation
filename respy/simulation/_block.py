@@ -12,7 +12,7 @@ class Block():
         """Delegates attribute access to the underlying grid object."""
         return getattr(self.grids,key)
 
-    def __call__(self,rrock,fluid,wconds=None,bconds=None,tstep=1.):
+    def __call__(self,rrock,fluid,wells=None,edges=None,tstep=1.):
         """Returns pressure updated Vector instance."""
 
         self.rrock = rrock # permeability and transmissibility
@@ -22,10 +22,10 @@ class Block():
         tvect = self.cell_vector(tstep)
 
         # well block productivity
-        wvect = self.well_vector(wconds)
+        wvect = self.well_vector(wells)
 
         # boundary block transmissibility
-        bvect = self.edge_vector(bconds)
+        bvect = self.edge_vector(edges)
 
         return Vector(*tvect,wvect,bvect)
 
@@ -108,17 +108,17 @@ class Block():
             return self.tcomp
         return self.rcomp+self.fcomp
 
-    def well_vector(self,wconds):
+    def well_vector(self,wells):
         """Returns productivity for all active wells."""
-        wconds = () if wconds is None else wconds
-        return [self.edge_productivity(wcond) for wcond in wconds]
+        wells = () if wells is None else wells
+        return [self.well_productivity(well) for well in wells]
 
-    def edge_vector(self,bconds):
+    def edge_vector(self,edges):
         """Returns transmissibility for all active boundaries."""
-        bconds = () if bconds is None else bconds
-        return [self.edge_productivity(bcond) for bcond in bconds]
+        edges = () if edges is None else edges
+        return [self.edge_productivity(edge) for edge in edges]
 
-    def edge_productivity(self,well):
+    def well_productivity(self,well):
         """Returns well transmissibility values for the given well condition."""
 
         if well.axis=="x":
