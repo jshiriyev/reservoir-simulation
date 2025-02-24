@@ -5,7 +5,7 @@ from ._base import GridBase
 class Grids(GridBase):
     """Represents a structured reservoir grid with additional table attribute."""
 
-    def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,table:numpy.ndarray):
+    def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,depths:numpy.ndarray,table:numpy.ndarray):
         """
         Initialize the grid with spatial discretization and associated table data.
 
@@ -14,9 +14,12 @@ class Grids(GridBase):
         ydelta (np.ndarray): Grid cell sizes in the y-direction (feet).
         zdelta (np.ndarray): Grid cell sizes in the z-direction (feet).
 
-        table (np.ndarray): Data table mapping the neighbors of each grid, integers.
+        table  (np.ndarray): Data table mapping the neighbors of each grid, integers.
+
+        depths  (np.ndarray): Grid depths (feet).
+
         """
-        super().__init__(xdelta,ydelta,zdelta)
+        super().__init__(xdelta,ydelta,zdelta,depths)
 
         self.xarea  = None # Placeholder for volume calculations
         self.yarea  = None # Placeholder for volume calculations

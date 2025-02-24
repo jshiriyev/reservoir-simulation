@@ -15,8 +15,8 @@ class Initiate():
 
 		peow 	: capillary entry pressure for oil-water
 		peog 	: capillary entry pressure for oil-gas
+		
 		"""
-
 		self.DWOC = DWOC
 		self.DGOC = DGOC
 
@@ -81,7 +81,6 @@ class Initiate():
 		returns water, oil and gas saturation values.
 
 		"""
-
 		depth = numpy.asarray(depth)
 
 		Sw = numpy.ones(depth.shape)
@@ -135,7 +134,6 @@ class Initiate():
 		returns water and oil saturation values
 
 		"""
-
 		depth = numpy.asarray(depth)
 
 		pw = self.wpress(depth)
@@ -156,7 +154,6 @@ class Initiate():
 		returns water, oil, and gas saturation values.
 
 		"""
-
 		depth = numpy.asarray(depth)
 
 		pw = self.wpress(depth)
@@ -178,7 +175,6 @@ class Initiate():
 		returns water and gas saturation values.
 		
 		"""
-
 		depth = numpy.asarray(depth)
 
 		pw = self.wpress(depth)

@@ -45,7 +45,7 @@ class Well():
         if len(constraint)==1:
             self.sort,self.cond = next(iter(constraint.items()))
         elif len(constraint)>1:
-            raise ValueError(f"Multiple well conditions provided: {list(constraint.keys())}. Assign only one.")            
+            raise ValueError(f"Multiple well conditions provided: {list(constraint.keys())}. Assign only one.")
 
     @property
     def axis(self):

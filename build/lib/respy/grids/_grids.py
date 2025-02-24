@@ -5,7 +5,7 @@ from ._base import GridBase
 class Grids(GridBase):
     """Represents a structured reservoir grid with additional table attribute."""
 
-    def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,table:numpy.ndarray):
+    def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,depths:numpy.ndarray,table:numpy.ndarray):
         """
         Initialize the grid with spatial discretization and associated table data.
 
@@ -14,9 +14,16 @@ class Grids(GridBase):
         ydelta (np.ndarray): Grid cell sizes in the y-direction (feet).
         zdelta (np.ndarray): Grid cell sizes in the z-direction (feet).
 
-        table (np.ndarray): Data table mapping the neighbors of each grid, integers.
+        table  (np.ndarray): Data table mapping the neighbors of each grid, integers.
+
+        depths  (np.ndarray): Grid depths (feet).
+
         """
-        super().__init__(xdelta,ydelta,zdelta)
+        super().__init__(xdelta,ydelta,zdelta,depths)
+
+        self.xarea  = None # Placeholder for volume calculations
+        self.yarea  = None # Placeholder for volume calculations
+        self.zarea  = None # Placeholder for volume calculations
 
         self.volume = None # Placeholder for volume calculations
 
@@ -29,6 +36,30 @@ class Grids(GridBase):
             (self.xdelta,self.ydelta,self.zdelta)
             )
 
+    @property
+    def xarea(self):
+        return self._xarea*10.7639
+
+    @xarea.setter
+    def xarea(self,value):
+        self._xarea = self._ydelta*self._zdelta
+
+    @property
+    def yarea(self):
+        return self._yarea*10.7639
+
+    @yarea.setter
+    def yarea(self,value):
+        self._yarea = self._zdelta*self._xdelta
+
+    @property
+    def zarea(self):
+        return self._zarea*10.7639
+
+    @zarea.setter
+    def zarea(self,value):
+        self._zarea = self._xdelta*self._ydelta
+    
     @property
     def volume(self):
         """Returns the volume of grids in field units."""

@@ -5,7 +5,7 @@ from ._delta import GridDelta
 class GridRegular(GridDelta):
 	"""Represents a regular, three-dimensional rectangular cuboid with uniform grid spacing."""
 
-	def __init__(self,size:tuple[float,float,float],nums:tuple[int,int,int],dims:int=None):
+	def __init__(self,size:tuple[float,float,float],nums:tuple[int,int,int],depths:float|numpy.ndarray=1000.,dims:int=None):
 		"""
 		Initializes a structured reservoir grid with uniform cell spacing.
 
@@ -19,7 +19,7 @@ class GridRegular(GridDelta):
 		ydelta = numpy.full(nums[1],size[1]/nums[1])
 		zdelta = numpy.full(nums[2],size[2]/nums[2])
 
-		super().__init__(xdelta,ydelta,zdelta,dims)
+		super().__init__(xdelta,ydelta,zdelta,depths,dims)
 
 if __name__ == "__main__":
 

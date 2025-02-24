@@ -9,15 +9,16 @@
 from .grids import Grids, GridDelta, GridRegular
 
 # 3. Property Calculation
+from .properties import Fluid
 # from .properties import phaseg
 # from .properties import cappres
 # from .properties import relperm
-# from .properties import fluid
+from .properties import RRock
 
 # 4. Configuration
-from .configure import Well, Time, regular
+from .configure import Well, Time
 
 # 5. Simulation
-# from . import solver
+from . import simulation
 
 # 6. Post-Processing

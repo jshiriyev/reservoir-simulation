@@ -5,8 +5,8 @@ from ._grids import Grids
 
 class GridDelta(GridBase):
 	"""Interface to get a three-dimensional rectangular cuboid for cell-based flow simulations."""
-
-	def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,dims:int=None):
+	
+	def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,depths:float|numpy.ndarray=1000.,dims:int=None):
 		"""
 		Initializes a 3D grid structure with spatial discretization.
 		
@@ -21,7 +21,7 @@ class GridDelta(GridBase):
 		The object has edge properties to calculate the control
 		volume implementation of flow calculations.
 		"""
-		super().__init__(xdelta,ydelta,zdelta)
+		super().__init__(xdelta,ydelta,zdelta,depths)
 
 		self.dims = dims
 
@@ -153,7 +153,9 @@ class GridDelta(GridBase):
 		ydelta = numpy.tile(numpy.repeat(self.ydelta,self.xnums),self.znums)
 		zdelta = numpy.repeat(self.zdelta,self.xnums*self.ynums)
 
-		return Grids(xdelta,ydelta,zdelta,self.table)
+		depths = numpy.full(numpy.prod(self.nums),self.depths[0]) if self.depths.size==1 else self.depths
+
+		return Grids(xdelta,ydelta,zdelta,depths,self.table)
 	
 	@property
 	def table(self):

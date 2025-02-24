@@ -17,7 +17,7 @@ from . import phaseg
 
 # from . import rperm as RelPerm
 
-# from ._phase import Phase
+from ._fluid import Fluid
 
 # from ._single import OnePhase
 

@@ -24,7 +24,7 @@ respy/grids/_regular.py
 respy/properties/__init__.py
 respy/properties/fluids/__init__.py
 respy/properties/fluids/_blackoil.py
-respy/properties/fluids/_phase.py
+respy/properties/fluids/_fluid.py
 respy/properties/fluids/_single.py
 respy/properties/fluids/cpress/__init__.py
 respy/properties/fluids/cpress/_brooks_corey.py
@@ -54,12 +54,15 @@ respy/properties/fluids/phasew/__init__.py
 respy/properties/fluids/phasew/_water.py
 respy/properties/fluids/rperm/__init__.py
 respy/properties/fluids/rperm/_relperm.py
+respy/properties/rocks/__init__.py
+respy/properties/rocks/_pormed.py
+respy/properties/rocks/_resrock.py
 respy/simulation/__init__.py
 respy/simulation/_block.py
 respy/simulation/_build.py
+respy/simulation/_cuboid.py
 respy/simulation/_impes.py
 respy/simulation/_matrix.py
-respy/simulation/_rcube.py
 respy/simulation/_simsol.py
 respy/simulation/_solver.py
 respy/simulation/_vector.py

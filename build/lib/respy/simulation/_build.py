@@ -117,7 +117,7 @@ class Build():
     @staticmethod
     def get_diag(array):
         return csr((array,(self.grid.rows,self.grid.rows)),shape=self.matrix)
-
+        
 if __name__ == "__main__":
 
     pass

@@ -84,7 +84,7 @@ class Cuboid():
         self._fluid = value
         
         # Reset fluid properties to indicate they need recalculation
-        self.hhead = None # Hydrostatic head placeholder
+        self.hhead = None # Hydrostatic head
         self.power = None # Fluid Potential (hydrostatic head + fluid pressure)
 
     @property

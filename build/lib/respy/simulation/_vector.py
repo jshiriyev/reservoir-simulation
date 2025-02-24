@@ -30,7 +30,7 @@ class Vector():
     @property
     def A(self):
         """Converting from SI Units to Oil Field Units."""
-        return self._C*(3.28084**3)*(24*60*60)*6894.76
+        return self._A*(3.28084**3)*(24*60*60)*6894.76
 
     @property
     def X(self):
