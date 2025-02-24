@@ -4,18 +4,20 @@ from ._vector import Vector
 
 class Block():
 
-    def __init__(self,grids):
+    def __init__(self,grids,rock=None,fluid=None):
         """Initialization of block (cell) calculation class."""
         self.grids = grids
+        self.rock  = rock
+        self.fluid = fluid
 
     def __getattr__(self,key):
         """Delegates attribute access to the underlying grid object."""
         return getattr(self.grids,key)
 
-    def __call__(self,rrock,fluid,wells=None,edges=None,tstep=1.):
+    def __call__(self,rock=None,fluid=None,wells=None,edges=None,tstep=1.):
         """Returns pressure updated Vector instance."""
 
-        self.rrock = rrock # permeability and transmissibility
+        self.rock  = rock # permeability and transmissibility
         self.fluid = fluid # hydrostatic head, potential and mobility
 
         # accumulation & inter-block transmissibility
@@ -29,34 +31,40 @@ class Block():
 
         return Vector(*tvect,wvect,bvect)
 
-    @rrock.setter
-    def rrock(self,rrock):
+    @rock.setter
+    def rock(self,rock):
         """Sets reservoir rock permeability and transmissibility into the cell."""
-        self.xflow = rrock
-        self.yflow = rrock
-        self.zflow = rrock
+        if rock is None:
+            return
+
+        self.xflow = rock
+        self.yflow = rock
+        self.zflow = rock
 
     @fluid.setter
     def fluid(self,fluid):
         """Sets fluid potential and mobility into the cell."""
+        if fluid is None:
+            return
+            
         self.hhead = fluid
         self.power = fluid
         self.mobil = fluid
 
     @xflow.setter
-    def xflow(self,rrock):
+    def xflow(self,rock):
         """Setter for the rock transmissibility in x-direction."""
-        self._xflow = (rrock._xperm*self._xarea)/(self._xdelta)
+        self._xflow = (rock._xperm*self._xarea)/(self._xdelta)
 
     @yflow.setter
-    def yflow(self,rrock):
+    def yflow(self,rock):
         """Setter for the rock transmissibility in y-direction."""
-        self._yflow = (rrock._yperm*self._yarea)/(self._ydelta)
+        self._yflow = (rock._yperm*self._yarea)/(self._ydelta)
 
     @zflow.setter
-    def zflow(self,rrock):
+    def zflow(self,rock):
         """Setter for the rock transmissibility in z-direction."""
-        self._zflow = (rrock._zperm*self._zarea)/(self._zdelta)
+        self._zflow = (rock._zperm*self._zarea)/(self._zdelta)
 
     @hhead.setter
     def hhead(self,fluid):
@@ -99,7 +107,7 @@ class Block():
 
     def accumulation(self,tstep:float):
         """Returns accumulation multiplied compressibility (A.ct)."""
-        return (self.volume*self.rrock.poro)/(tstep*86400)
+        return (self.volume*self.rock.poro)/(tstep*86400)
 
     @property
     def compressibility(self):
@@ -122,20 +130,20 @@ class Block():
         """Returns well transmissibility values for the given well condition."""
 
         if well.axis=="x":
-            k1 = self.rrock.yperm[list(well.block)]
-            k2 = self.rrock.zperm[list(well.block)]
+            k1 = self.rock.yperm[list(well.block)]
+            k2 = self.rock.zperm[list(well.block)]
             w1 = self.grids.ydelta[list(well.block)]
             w2 = self.grids.zdelta[list(well.block)]
             w3 = self.grids.xdelta[list(well.block)]
         elif well.axis=='y':
-            k1 = self.rrock.xperm[list(well.block)]
-            k2 = self.rrock.zperm[list(well.block)]
+            k1 = self.rock.xperm[list(well.block)]
+            k2 = self.rock.zperm[list(well.block)]
             w1 = self.grids.xdelta[list(well.block)]
             w2 = self.grids.zdelta[list(well.block)]
             w3 = self.grids.ydelta[list(well.block)]
         elif well.axis=='z':
-            k1 = self.rrock.xperm[list(well.block)]
-            k2 = self.rrock.yperm[list(well.block)]
+            k1 = self.rock.xperm[list(well.block)]
+            k2 = self.rock.yperm[list(well.block)]
             w1 = self.grids.xdelta[list(well.block)]
             w2 = self.grids.ydelta[list(well.block)]
             w3 = self.grids.zdelta[list(well.block)]
