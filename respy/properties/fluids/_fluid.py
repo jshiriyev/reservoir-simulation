@@ -1,6 +1,6 @@
 import numpy
 
-class Phase():
+class Fluid():
     """
     A class that defines constant fluid properties at the
     given pressure and temperature.
