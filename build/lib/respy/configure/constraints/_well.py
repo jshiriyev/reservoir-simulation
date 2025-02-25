@@ -2,7 +2,7 @@ import numpy
 
 class Well():
     """
-    Represents a well condition object used in a reservoir simulator.
+    Represents a well object used in a reservoir simulator.
     """
     VALID_SORTS = {"press", "lrate", "orate", "wrate", "grate"}
 

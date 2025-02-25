@@ -10,17 +10,17 @@ class RRock():
 		"""
 		Initializes a reservoir rock with the following petrophysical parameters:
 
-		Parameters:
-        -----------
+		Parameters
+        ----------
 		*args and **kwargs : Passed to self.set_permeability(*args,**kwargs)
 		
-		poro    : numpy.ndarray, optional
+		poro 	: float or numpy.ndarray of floats, optional
 			Porosity of the rock, dimensionless
 
-		comp 	: numpy.ndarray, optional
+		comp 	: float or numpy.ndarray of floats, optional
 			Isothermal compressibility factor of rock, 1/psi
 
-		press   : numpy.ndarray, optional
+		press   : float or numpy.ndarray of floats, optional
 			Pressure at which properties are defined, psi
 
 		"""
@@ -42,8 +42,8 @@ class RRock():
 
 		"""
 		self.xperm = xperm
-		self.yperm = self.xperm*yreduce if yperm is None else numpy.asarray(yperm).astype(numpy.float64)
-		self.zperm = self.xperm*zreduce if zperm is None else numpy.asarray(zperm).astype(numpy.float64)
+		self.yperm = self.xperm*yreduce if yperm is None else numpy.ravel(yperm).astype(float)
+		self.zperm = self.xperm*zreduce if zperm is None else numpy.ravel(zperm).astype(float)
 
 	@property
 	def perm(self):
@@ -58,7 +58,7 @@ class RRock():
 	@xperm.setter
 	def xperm(self,value):
 		"""Setter for the reservoir permeability in x-direction."""
-		self._xperm = numpy.asarray(value).astype(numpy.float64)*9.869233e-16
+		self._xperm = numpy.ravel(value).astype(float)*9.869233e-16
 
 	@property
 	def yperm(self):
@@ -88,7 +88,7 @@ class RRock():
 	@poro.setter
 	def poro(self,value):
 		"""Setter for the porosity values if value is available; otherwise sets None."""
-		self._poro = None if value is None else numpy.asarray(value).astype(numpy.float64)
+		self._poro = None if value is None else numpy.ravel(value).astype(float)
 
 	@property
 	def comp(self):
@@ -112,7 +112,7 @@ class RRock():
 
 if __name__ == "__main__":
 
-	rrock = PorMed((10,15,20),poro=(0.1,0.2,0.3),yreduce=0.5,zreduce=0.1)
+	rrock = RRock((10,15,20),poro=(0.1,0.2,0.3),yreduce=0.5,zreduce=0.1)
 
 	print(rrock.xperm)
 	print(rrock.yperm)

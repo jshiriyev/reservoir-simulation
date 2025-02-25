@@ -1,14 +1,17 @@
+import logging
+
 import numpy
 
 class Cuboid():
     """Rectangular Cuboid class"""
 
-    def __init__(self,grids,rrock=None,fluid=None,tcomp=None):
+    def __init__(self,grids,rrock,fluid,tcomp=None):
         """Initialization of block (cell) calculation class."""
         self.grids = grids
         self.rrock = rrock
         self.fluid = fluid
-        self.tcomp = tcomp
+
+        self._tcomp,self.tcomp = None,tcomp
 
     def __getattr__(self,key):
         """Delegates attribute access to the underlying grid object."""
@@ -20,11 +23,8 @@ class Cuboid():
         self.fluid = fluid # reservoir fluid properties
         self.tcomp = tcomp # total compressibility
 
-        return self
-
     @property
     def rrock(self):
-        """Getter for the reservoir rock properties."""
         return self._rrock
     
     @rrock.setter
@@ -72,7 +72,6 @@ class Cuboid():
 
     @property
     def fluid(self):
-        """Getter for the reservoir fluid properties."""
         return self._fluid
     
     @fluid.setter
@@ -95,7 +94,7 @@ class Cuboid():
     @hhead.setter
     def hhead(self,value):
         """Setter for the fluid's hydrostatic head in Pa."""
-        self._hhead = self.fluid._grad*self._depth
+        self._hhead = self.fluid._grad*self._depths
 
     @property
     def power(self):
@@ -105,17 +104,23 @@ class Cuboid():
     @power.setter
     def power(self,value):
         """Setter for the fluid's phase potential at grids in Pa."""
-        self._power = self.fluid._press+self.fluid._grad*self._depth
+        self._power = self._hhead if self.fluid._press is None else self.fluid._press+self._hhead
 
     @property
     def tcomp(self):
         """Getter for the total compressibility."""
-        return self._tcomp*6894.76
+        return None if self._tcomp is None else self._tcomp*6894.76
 
     @tcomp.setter
     def tcomp(self,value):
         """Setter for the total compressibility."""
-        self._tcomp = self.rrock._comp+self.fluid._comp if value is None else value/6894.76
+        if value is None:
+            try:
+                self._tcomp = self.rrock._comp+self.fluid._comp
+            except Exception as e:
+                logging.warning(f"Missing attribute when calculating total compressibility: {e}")
+        else:
+            self._tcomp = value/6894.76
 
 if __name__ == "__main__":
 

@@ -7,10 +7,13 @@ class GridBase():
 		"""
 		Initialize grid cell dimensions in feet.
 
-		Parameters:
+		Parameters
+		----------
 		xdelta (float or array-like): Grid cell size in the x-direction (feet).
 		ydelta (float or array-like): Grid cell size in the y-direction (feet).
 		zdelta (float or array-like): Grid cell size in the z-direction (feet).
+
+		depths (float or array-like): Grid depths (feet).
 		"""
 		self.xdelta = xdelta # ft
 		self.ydelta = ydelta # ft

@@ -1,3 +1,5 @@
+from functools import cached_property
+
 import numpy
 
 from ._base import GridBase
@@ -5,13 +7,13 @@ from ._grids import Grids
 
 class GridDelta(GridBase):
 	"""Interface to get a three-dimensional rectangular cuboid for cell-based flow simulations."""
-
-	def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,depth:float|numpy.ndarray=1000.,dims:int=None):
+	
+	def __init__(self,xdelta:numpy.ndarray,ydelta:numpy.ndarray,zdelta:numpy.ndarray,depths:float|numpy.ndarray=1000.,dims:int=None):
 		"""
 		Initializes a 3D grid structure with spatial discretization.
 		
-		Parameters:
-
+		Parameters
+		----------
 		xdelta	: length of grids in x-direction (feet), shape = (xnums,)
 		ydelta	: width of grids in y-direction (feet), shape = (ynums,)
 		zdelta	: height of grids in z-direction (feet), shape = (znums,)
@@ -21,7 +23,7 @@ class GridDelta(GridBase):
 		The object has edge properties to calculate the control
 		volume implementation of flow calculations.
 		"""
-		super().__init__(xdelta,ydelta,zdelta)
+		super().__init__(xdelta,ydelta,zdelta,depths)
 
 		self.dims = dims
 
@@ -146,7 +148,7 @@ class GridDelta(GridBase):
 		"""Returns the indices of all grids."""
 		return numpy.arange(numpy.prod(self.nums),dtype=numpy.int_)
 
-	@property
+	@cached_property
 	def grids(self):
 		"""Returns Grids instance necessary for flow calculations."""
 		xdelta = numpy.tile(self.xdelta,self.ynums*self.znums)
@@ -157,7 +159,7 @@ class GridDelta(GridBase):
 
 		return Grids(xdelta,ydelta,zdelta,depths,self.table)
 	
-	@property
+	@cached_property
 	def table(self):
 		"""Returns the table of grids that stores neighborhood indices."""
 		map_ = numpy.tile(self.index,(self.dims*2,1)).T

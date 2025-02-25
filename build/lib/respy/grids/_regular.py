@@ -9,10 +9,14 @@ class GridRegular(GridDelta):
 		"""
 		Initializes a structured reservoir grid with uniform cell spacing.
 
-		Parameters:
-        size 	: Reservoir dimensions (x-length, y-width, z-height) in feet.
-        nums 	: Number of grid cells along each axis (xnums, ynums, znums).
-        dims	: (optional) Flow dimension (1, 2, or 3). Defaults to None.
+		Parameters
+		----------
+        size (tuple) : Reservoir dimensions (x-length, y-width, z-height) in feet.
+        nums (tuple) : Number of grid cells along each axis (xnums, ynums, znums).
+		
+		depths (np.ndarray): Grid depths (feet).
+
+        dims (int)	: (optional) Flow dimension (1, 2, or 3). Defaults to None.
 
 		"""
 		xdelta = numpy.full(nums[0],size[0]/nums[0])

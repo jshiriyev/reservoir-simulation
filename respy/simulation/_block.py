@@ -5,36 +5,36 @@ from ._vector import Vector
 
 class Block(Cuboid):
 
-    def __init__(self,grids,rrock=None,fluid=None,tcomp=None):
+    def __init__(self,grids,rrock,fluid,tcomp=None):
         """Initialization of block (cell) calculation class."""
         super().__init__(grids,rrock,fluid,tcomp)
 
     def vector(self,tstep=1.,wells=None,edges=None):
         """Returns vector to be used in the building."""
-        avect = self.accumulation(tstep) # accumulation vector
-        tvect = self.transmissibility() # inter-block transmissibility vector
+        avect = self.storage(tstep) # accumulation vector
+        tvect = self.fluxes() # inter-block transmissibility vector
         wvect = self.boreholes(wells) # wells' block productivity vector list
         evect = self.boundaries(edges) # edges' block productivity vector list
 
         return Vector(avect,*tvect,wvect,evect)
 
-    def accumulation(self,tstep:float):
+    def storage(self,tstep:float):
         """Returns accumulation multiplied compressibility (A.ct)."""
         return (self.volume*self.rrock.poro*self.tcomp)/tstep
 
-    def transmissibility(self):
+    def fluxes(self):
         """Returns Tx, Ty, and Tz in the form of flat arrays."""
-        tx = self.flux(self.xflow,self.xnegbool,self.xposbool)
-        ty = self.flux(self.yflow,self.ynegbool,self.yposbool)
-        tz = self.flux(self.zflow,self.znegbool,self.zposbool)
+        tx = self.flux(self.xflow,self._xneg,self._xpos)
+        ty = self.flux(self.yflow,self._yneg,self._ypos)
+        tz = self.flux(self.zflow,self._zneg,self._zpos)
 
         return tx,ty,tz
 
-    def flux(self,flow,negbool,posbool):
+    def flux(self,flow,bneg,bpos):
         """Helper function to compute mean harmonic and upwinded mobility product."""
-        rmean = self.mean_harmonic(flow[negbool],flow[posbool])
+        rmean = self.mean_harmonic(flow[bneg],flow[bpos])
         fmean = self.upwinding(
-            self.mobil[negbool],self.mobil[posbool],self.power[negbool],self.power[posbool])
+            self.mobil[bneg],self.mobil[bpos],self.power[bneg],self.power[bpos])
 
         return rmean*fmean
 
@@ -61,29 +61,28 @@ class Block(Cuboid):
     def boreholes(self,wells):
         """Returns productivity for all active wells."""
         wells = () if wells is None else wells
-        return [self.well_productivity(well) for well in wells]
+        return [self.borehole(w) for w in wells]
 
-    def well_productivity(self,well):
+    def borehole(self,well):
         """Returns well transmissibility values for the given well condition."""
 
+        xperm = self.rrock.xperm[list(well.block)]
+        yperm = self.rrock.yperm[list(well.block)]
+        zperm = self.rrock.zperm[list(well.block)]
+
+        xsize = self.grids.xdelta[list(well.block)]
+        ysize = self.grids.ydelta[list(well.block)]
+        zsize = self.grids.zdelta[list(well.block)]
+
         if well.axis=="x":
-            k1 = self.rrock.yperm[list(well.block)]
-            k2 = self.rrock.zperm[list(well.block)]
-            w1 = self.grids.ydelta[list(well.block)]
-            w2 = self.grids.zdelta[list(well.block)]
-            w3 = self.grids.xdelta[list(well.block)]
+            k1,k2,k3 = yperm,zperm,xperm
+            w1,w2,w3 = ysize,zsize,xsize
         elif well.axis=='y':
-            k1 = self.rrock.xperm[list(well.block)]
-            k2 = self.rrock.zperm[list(well.block)]
-            w1 = self.grids.xdelta[list(well.block)]
-            w2 = self.grids.zdelta[list(well.block)]
-            w3 = self.grids.ydelta[list(well.block)]
+            k1,k2,k3 = zperm,xperm,yperm
+            w1,w2,w3 = zsize,xsize,ysize
         elif well.axis=='z':
-            k1 = self.rrock.xperm[list(well.block)]
-            k2 = self.rrock.yperm[list(well.block)]
-            w1 = self.grids.xdelta[list(well.block)]
-            w2 = self.grids.ydelta[list(well.block)]
-            w3 = self.grids.zdelta[list(well.block)]
+            k1,k2,k3 = xperm,yperm,zperm
+            w1,w2,w3 = xsize,ysize,zsize
 
         well.prod = (2*numpy.pi*w3*numpy.sqrt(k1*k2))/(
             numpy.log(self.requivalent(k1,k2,w1,w2)/well.radius)+well.skin

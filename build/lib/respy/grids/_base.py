@@ -7,10 +7,13 @@ class GridBase():
 		"""
 		Initialize grid cell dimensions in feet.
 
-		Parameters:
+		Parameters
+		----------
 		xdelta (float or array-like): Grid cell size in the x-direction (feet).
 		ydelta (float or array-like): Grid cell size in the y-direction (feet).
 		zdelta (float or array-like): Grid cell size in the z-direction (feet).
+
+		depths (float or array-like): Grid depths (feet).
 		"""
 		self.xdelta = xdelta # ft
 		self.ydelta = ydelta # ft
@@ -49,12 +52,12 @@ class GridBase():
 
 	@property
 	def depths(self):
-		"""Returns the depths of grids."""
+		"""Returns the depths of grids in feet."""
 		return self._depths/0.3048
 
 	@depths.setter
 	def depths(self,value):
-		"""Setter for the depths of grids."""
+		"""Setter for the depths of grids in meters."""
 		self._depths = numpy.ravel(value).astype(float)*0.3048
 
 if __name__ == "__main__":

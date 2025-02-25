@@ -6,7 +6,7 @@ class Fluid():
     given pressure and temperature.
     """
 
-    def __init__(self,*,visc=None,rho=None,comp=1e-6,fvf=1.0,press=None,satur=1.0,rperm=1.0):
+    def __init__(self,visc,*,rho=62.4,comp=1e-6,fvf=1.0,press=None,satur=1.0,rperm=1.0):
         """
         Initializes a fluid with specific properties.
 
@@ -36,8 +36,6 @@ class Fluid():
         """
         self.visc  = visc
         self.rho   = rho
-
-        self.grad  = None
         
         self.comp  = comp
         self.fvf   = fvf
@@ -46,47 +44,38 @@ class Fluid():
         self.satur = satur
         self.rperm = rperm
 
+        self.grad  = None
         self.mobil = None
 
     @property
     def visc(self):
         """Getter for the fluid viscosity."""
-        return None if self._visc is None else self._visc/0.001
+        return self._visc/0.001
 
     @visc.setter
     def visc(self,value):
         """Setter for the fluid viscosity."""
-        self._visc = None if value is None else value*0.001
+        self._visc = value*0.001
 
     @property
     def rho(self):
         """Getter for the fluid density."""
-        return None if self._rho is None else self._rho/16.0185
+        return self._rho/16.0185
 
     @rho.setter
     def rho(self,value):
         """Setter for the fluid density."""
-        self._rho = None if value is None else value*16.0185
-
-    @property
-    def grad(self):
-        """Getter for the fluid gradient."""
-        return None if self._grad is None else self._grad/22620.6
-
-    @grad.setter
-    def grad(self,value):
-        """Setter for the fluid gradient."""
-        self._grad = None if self._rho is None else self._rho*9.807
+        self._rho = value*16.0185
 
     @property
     def comp(self):
         """Getter for the fluid compressibility."""
-        return None if self._comp is None else self._comp*6894.76
+        return self._comp*6894.76
 
     @comp.setter
     def comp(self,value):
         """Setter for the fluid compressibility."""
-        self._comp = None if value is None else value/6894.76
+        self._comp = value/6894.76
 
     @property
     def fvf(self):
@@ -129,14 +118,24 @@ class Fluid():
         self._rperm = value
 
     @property
+    def grad(self):
+        """Getter for the fluid gradient."""
+        return self._grad/22620.6
+
+    @grad.setter
+    def grad(self,value):
+        """Setter for the fluid gradient."""
+        self._grad = self._rho*9.807
+
+    @property
     def mobil(self):
         """Getter for the fluid mobility."""
-        return None if self._mobil is None else self._mobil*0.001
+        return self._mobil*0.001
 
     @mobil.setter
     def mobil(self,value):
         """Setter for the fluid mobility."""
-        self._mobil = None if self._visc is None else self._rperm/(self._visc*self._fvf)
+        self._mobil = (self._rperm)/(self._visc*self._fvf)
 
 if __name__ == "__main__":
 
