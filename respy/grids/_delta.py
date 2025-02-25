@@ -39,17 +39,17 @@ class GridDelta(GridBase):
 	@property
 	def xnums(self):
 		"""Returns the number of grids in x-direction."""
-		return self.xdelta.size
+		return self._xdelta.size
 
 	@property
 	def ynums(self):
 		"""Returns the number of grids in y-direction."""
-		return self.ydelta.size
+		return self._ydelta.size
 
 	@property
 	def znums(self):
 		"""Returns the number of grids in z-direction."""
-		return self.zdelta.size
+		return self._zdelta.size
 
 	@property
 	def dims(self):
@@ -103,7 +103,6 @@ class GridDelta(GridBase):
 		self.xcenter = None
 		self.ycenter = None
 		self.zcenter = None
-		return self
 
 	@property
 	def xcenter(self):
@@ -138,10 +137,8 @@ class GridDelta(GridBase):
 	@staticmethod
 	def midpoints(array:numpy.ndarray):
 		"""Calculates the midpoints of the given array."""
-		pos = numpy.cumsum(array)
-		neg = numpy.roll(pos,1)
-		neg[0] = 0
-		return (neg+pos)/2
+		value = numpy.cumsum(array)
+		return (numpy.insert(value[:-1],0,0)+value)/2
 
 	@property
 	def index(self):
@@ -151,31 +148,41 @@ class GridDelta(GridBase):
 	@cached_property
 	def grids(self):
 		"""Returns Grids instance necessary for flow calculations."""
-		xdelta = numpy.tile(self.xdelta,self.ynums*self.znums)
-		ydelta = numpy.tile(numpy.repeat(self.ydelta,self.xnums),self.znums)
-		zdelta = numpy.repeat(self.zdelta,self.xnums*self.ynums)
+		xynums = self.xnums*self.ynums # number of grids in a x-y plane
+		yznums = self.ynums*self.znums # number of grids in a y-z plane
 
-		depths = numpy.full(numpy.prod(self.nums),self.depths[0]) if self.depths.size==1 else self.depths
+		xdelta = numpy.tile(self.xdelta,yznums)
+		ydelta = numpy.repeat(self.ydelta,self.xnums)
+		ydelta = numpy.tile(ydelta,self.znums)
+		zdelta = numpy.repeat(self.zdelta,xynums)
+
+		if self._depths.shape not in {(1,),(xynums,)}:
+			raise ValueError(f"Invalid depth shape {self._depths.shape}.")
+
+        depths = numpy.full(xynums,self.depths[0]) if self._depths.size==1 else self.depths
+
+		height = numpy.cumsum(numpy.insert(self.zdelta[:-1],0,0))
+        depths = numpy.tile(depths,self.znums)+numpy.repeat(height,xynums)
 
 		return Grids(xdelta,ydelta,zdelta,depths,self.table)
 	
 	@cached_property
 	def table(self):
 		"""Returns the table of grids that stores neighborhood indices."""
-		map_ = numpy.tile(self.index,(self.dims*2,1)).T
+		plat = numpy.tile(self.index,(self.dims*2,1)).T
 
-		map_[self.index.reshape(-1,self.xnums)[:,1:].ravel(),0] -= 1
-		map_[self.index.reshape(-1,self.xnums)[:,:-1].ravel(),1] += 1
+		plat[self.index.reshape(-1,self.xnums)[:,1:].ravel(),0] -= 1
+		plat[self.index.reshape(-1,self.xnums)[:,:-1].ravel(),1] += 1
 
 		if self.dims>1:
-			map_[self.index.reshape(self.znums,-1)[:,self.xnums:],2] -= self.xnums
-			map_[self.index.reshape(self.znums,-1)[:,:-self.xnums],3] += self.xnums
+			plat[self.index.reshape(self.znums,-1)[:,self.xnums:],2] -= self.xnums
+			plat[self.index.reshape(self.znums,-1)[:,:-self.xnums],3] += self.xnums
 
 		if self.dims>2:
-			map_[self.index.reshape(self.znums,-1)[1:,:],4] -= self.xnums*self.ynums
-			map_[self.index.reshape(self.znums,-1)[:-1,:],5] += self.xnums*self.ynums
+			plat[self.index.reshape(self.znums,-1)[1:,:],4] -= self.xnums*self.ynums
+			plat[self.index.reshape(self.znums,-1)[:-1,:],5] += self.xnums*self.ynums
 
-		return map_
+		return plat
 
 if __name__ == "__main__":
 
