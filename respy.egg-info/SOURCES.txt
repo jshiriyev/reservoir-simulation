@@ -70,7 +70,7 @@ respy/textio/__init__.py
 respy/textio/_grid.py
 respy/textio/_schedule.py
 respy/visualization/__init__.py
-respy/visualization/_frames.py
+respy/visualization/_tables.py
 respy/visualization/_templix.py
 respy/visualization/_toexcel.py
 tests/test_fmodel_state.py

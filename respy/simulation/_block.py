@@ -40,13 +40,13 @@ class Block(Cuboid):
 
         for well in wells:
 
-            xsize = self._xdelta[list(well.block)]
-            ysize = self._ydelta[list(well.block)]
-            zsize = self._zdelta[list(well.block)]
+            xsize = self._xdelta[list(well.index)]
+            ysize = self._ydelta[list(well.index)]
+            zsize = self._zdelta[list(well.index)]
 
-            xperm = self.rrock._xperm[list(well.block)]
-            yperm = self.rrock._yperm[list(well.block)]
-            zperm = self.rrock._zperm[list(well.block)]
+            xperm = self.rrock._xperm[list(well.index)]
+            yperm = self.rrock._yperm[list(well.index)]
+            zperm = self.rrock._zperm[list(well.index)]
 
             if well.axis=="x":
                 k1,k2,w1,w2,w3 = yperm,zperm,ysize,zsize,xsize
@@ -57,9 +57,9 @@ class Block(Cuboid):
 
             wprop = (well._radius,well.skin)
 
-            prods.append(Mean.potency(k1,k2,w1,w2,w3,*wprop)*self._mobil[list(well.block)])
+            well._prod = Mean.potency(k1,k2,w1,w2,w3,*wprop)*self._mobil[list(well.index)]
         
-        return prods
+        return wells
 
     def edges(self,edges):
         """Returns transmissibility for all active boundaries."""
@@ -70,9 +70,9 @@ class Block(Cuboid):
             bools = getattr(self,f"_{edge.face}")
             flows = getattr(self,f"_{edge.axis}flow")[bools]
 
-            prods.append(flows*self._mobil[bools])
+            edge._prod = flows*self._mobil[bools]
 
-        return prods
+        return edges
 
 class Mean:
 

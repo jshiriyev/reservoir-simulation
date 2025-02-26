@@ -48,10 +48,10 @@ class Vector():
     @property
     def W(self):
         """Converting from SI Units to Oil Field Units."""
-        return [prod*(3.28084**3)*(24*60*60)*6894.76 for prod in self._W]
+        return [well._prod*(3.28084**3)*(24*60*60)*6894.76 for well in self._W]
     
     @property
     def B(self):
         """Converting from SI Units to Oil Field Units."""
-        return [prod*(3.28084**3)*(24*60*60)*6894.76 for prod in self._B]
+        return [edge._prod*(3.28084**3)*(24*60*60)*6894.76 for edge in self._B]
 

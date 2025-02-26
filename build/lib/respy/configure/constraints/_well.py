@@ -6,12 +6,12 @@ class Well():
     """
     VALID_SORTS = {"press", "lrate", "orate", "wrate", "grate"}
 
-    def __init__(self,block:tuple,*,axis:str="z",radius:float=0.5,skin:float=0,start:float=0,stop:float=None,**kwargs):
+    def __init__(self,index:tuple,*,axis:str="z",radius:float=0.5,skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
         Parameters
         ----------
-        block   : tuple[int, ...]
-            All block indices containing the well
+        index   : tuple[int, ...]
+            All index indices containing the well
         axis    : str, optional
             Well orientation ('z' for vertical, 'x' or 'y' for horizontal wells), default is 'z'
         radius  : float, optional
@@ -31,7 +31,7 @@ class Well():
         - 'wrate' : Constant water rate, (bbl/day)
         - 'grate' : Constant gas rate, (ft3/day)
         """
-        self.block  = block
+        self.index  = index
 
         self.axis   = axis
         self.radius = radius
