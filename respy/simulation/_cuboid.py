@@ -83,8 +83,9 @@ class Cuboid():
         self._fluid = value
         
         # Reset fluid properties to indicate they need recalculation
-        self.hhead = None # Hydrostatic head placeholder
-        self.power = None # Fluid Potential (hydrostatic head + fluid pressure)
+        self.hhead = None # Block's hydrostatic head placeholder
+        self.power = None # Block's fluid potential (hydrostatic head + fluid pressure)
+        self.mobil = None # Block's fluid mobility
 
     @property
     def hhead(self):
@@ -105,6 +106,19 @@ class Cuboid():
     def power(self,value):
         """Setter for the fluid's phase potential at grids in Pa."""
         self._power = self._hhead if self.fluid._press is None else self.fluid._press+self._hhead
+
+    @property
+    def mobil(self):
+        """Getter for the block's fluid mobility."""
+        return self._mobil*0.001
+    
+    @mobil.setter
+    def mobil(self,value):
+        """Setter for the block's fluid mobility."""
+        if self.fluid._mobil.shape == (1,):
+            self._mobil = numpy.repeat(self.fluid._mobil/0.001,self.nums)
+        else:
+            self._mobil = self.fluid._mobil/0.001
 
     @property
     def tcomp(self):
