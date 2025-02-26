@@ -19,11 +19,13 @@ class Block(Cuboid):
         return Vector(avect,*tvect,wvect,evect)
 
     def storage(self,_tstep:float):
-        """Returns accumulation multiplied compressibility (A.ct)."""
-        return (self._volume*self.rrock._poro*self._tcomp)/(_tstep)
+        """Returns accumulation multiplied compressibility (A.ct).
+        Input time-step, _tstep, must be in SI units."""
+        acomp = (self._volume*self.rrock._poro*self._tcomp)/(_tstep)
+        return acomp
 
     def fluxes(self):
-        """Returns Tx, Ty, and Tz in the form of flat arrays."""
+        """Returns xflux, yflux, and zflux in tuple."""
         fluid = (self._mobil,self._power)
 
         xvect = Mean.diffuse(self._xflow,*fluid,self._xneg,self._xpos)
@@ -66,10 +68,9 @@ class Block(Cuboid):
         for edge in edges:
 
             bools = getattr(self,f"_{edge.face}")
+            flows = getattr(self,f"_{edge.axis}flow")[bools]
 
-            _flow = getattr(self,f"_{edge.axis}flow")[bools]
-
-            prods.append(_flow*self._mobil[bools])
+            prods.append(flows*self._mobil[bools])
 
         return prods
 
