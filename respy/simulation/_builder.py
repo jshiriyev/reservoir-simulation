@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix as csr
 from ._vector import Vector
 from ._matrix import Matrix
 
-class Build():
+class Builder():
 
     def __init__(self,grids):
         """Initialization of matrix building class."""
@@ -16,7 +16,7 @@ class Build():
         return getattr(self.grids,key)
 
     @property
-    def matrix(self):
+    def square(self):
         """Returns the shape of square matrices in the flow calculations."""
         return (self.nums,)*2
 
@@ -25,7 +25,11 @@ class Build():
         """Returns the shape of column matrices in the flow calculations."""
         return (self.nums,1)
 
-    def __call__(self,vec:Vector):
+    @property
+    def filler(self):
+        return Filler
+    
+    def matrix(self,vec:Vector):
         """Returns matrices to be used in the solver."""
         A = self.Amat(vec)
         T = self.Tmat(vec)
@@ -37,15 +41,15 @@ class Build():
 
     def Amat(self,vec:Vector):
         """Returns Accumulation matrix filled with diagonal values."""
-        return csr((vec._A,(self.index,self.index)),shape=self.matrix)
+        return csr((vec._A,(self.index,self.index)),shape=self.square)
 
     def Tmat(self,vec:Vector):
         """Returns Transmissibility matrix filled with diagonal and offset values."""
-        matrix = csr(self.matrix)
+        matrix = csr(self.square)
 
-        matrix = Filler.tmatrix(matrix,vec._X,self.xneg,self.xpos)
-        matrix = Filler.tmatrix(matrix,vec._Y,self.yneg,self.ypos)
-        matrix = Filler.tmatrix(matrix,vec._Z,self.zneg,self.zpos)
+        matrix = self.filler.tmatrix(matrix,vec._X,self.xneg,self.xpos)
+        matrix = self.filler.tmatrix(matrix,vec._Y,self.yneg,self.ypos)
+        matrix = self.filler.tmatrix(matrix,vec._Z,self.zneg,self.zpos)
 
         return matrix
 
@@ -55,13 +59,13 @@ class Build():
 
     def Jmat(self,vec:Vector):
         """Returns J matrix filled with constant pressure constraints on diagonal."""
-        matrix = csr(self.matrix)
+        matrix = csr(self.square)
 
         for well in vec._W:
-            matrix += Filler.jmatrix(matrix,well)
+            matrix += self.filler.jmatrix(matrix,well)
 
         for edge in vec._B:
-            matrix += Filler.jmatrix(matrix,edge)
+            matrix += self.filler.jmatrix(matrix,edge)
 
         return matrix
 
@@ -70,10 +74,10 @@ class Build():
         matrix = csr(self.column)
 
         for well in vec._W:
-            matrix += Filler.qmatrix(matrix,well)
+            matrix += self.filler.qmatrix(matrix,well)
 
         for edge in vec._B:
-            matrix += Filler.qmatrix(matrix,edge)
+            matrix += self.filler.qmatrix(matrix,edge)
 
         return matrix
 
@@ -91,24 +95,24 @@ class Filler:
         return matrix
 
     @staticmethod
-    def jmatrix(matrix:csr,constraint):
+    def jmatrix(matrix:csr,constr):
         """Returns updated J diagonal matrix."""
-        if constraint.sort=="press":
-            vector = (constraint._prod,(constraint.index,constraint.index))
-            matrix += csr(vector,shape=matrix.shape)
+        if constr.sort=="press":
+            vector = (constr._prod,(constr.index,constr.index))
+            matrix = csr(vector,shape=matrix.shape)
 
         return matrix
 
     @staticmethod
-    def qmatrix(matrix:csr,constarint):
+    def qmatrix(matrix:csr,constr):
         """Returns updated Q column matrix."""
-        vector = constarint._prod*constarint._cond
+        vector = constr._prod*constr._cond
 
-        if constarint.sort!="press":
-            vector /= constarint._prod.sum()
+        if constr.sort!="press":
+            vector /= constr._prod.sum()
 
-        vector = (vector,(constraint.index,numpy.zeros(constraint.index.size)))
-        matrix += csr(vector,shape=matrix.shape)
+        vector = (vector,(constr.index,numpy.zeros_like(constr.index)))
+        matrix = csr(vector,shape=matrix.shape)
 
         return matrix
         

@@ -21,4 +21,6 @@ from .configure import Well, Time
 # 5. Simulation
 from . import simulation
 
+from .simulation import BaseSolver
+
 # 6. Post-Processing

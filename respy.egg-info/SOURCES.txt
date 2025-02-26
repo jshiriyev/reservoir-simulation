@@ -59,7 +59,7 @@ respy/properties/rocks/_pormed.py
 respy/properties/rocks/_resrock.py
 respy/simulation/__init__.py
 respy/simulation/_block.py
-respy/simulation/_build.py
+respy/simulation/_builder.py
 respy/simulation/_cuboid.py
 respy/simulation/_impes.py
 respy/simulation/_matrix.py

@@ -2,20 +2,19 @@ import logging
 
 import numpy
 
-class Cuboid():
+from ._builder import Builder
+
+class Cuboid(Builder):
     """Rectangular Cuboid class"""
 
     def __init__(self,grids,rrock,fluid,tcomp=None):
         """Initialization of block (cell) calculation class."""
-        self.grids = grids
+        super().__init__(grids)
+
         self.rrock = rrock
         self.fluid = fluid
 
         self._tcomp,self.tcomp = None,tcomp
-
-    def __getattr__(self,key):
-        """Delegates attribute access to the underlying grid object."""
-        return getattr(self.grids,key)
 
     def __call__(self,rrock=None,fluid=None,tcomp=None):
         """Returns the instance with updated rock and fluid properties."""

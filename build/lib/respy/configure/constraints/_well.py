@@ -40,7 +40,7 @@ class Well():
         self.start  = start
         self.stop   = stop
 
-        constraint = {key:value for key,value in kwargs.items() if value is not None}
+        constraint  = {key:value for key,value in kwargs.items() if value is not None}
 
         if len(constraint)==1:
             self.sort,self.cond = next(iter(constraint.items()))

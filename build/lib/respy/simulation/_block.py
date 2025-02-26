@@ -9,32 +9,37 @@ class Block(Cuboid):
         """Initialization of block (cell) calculation class."""
         super().__init__(grids,rrock,fluid,tcomp)
 
+    @property
+    def mean(self):
+        return Mean
+    
     def vector(self,tstep=1.,wells=None,edges=None):
         """Returns vector to be used in the building."""
-        avect = self.storage(tstep) # accumulation vector
-        tvect = self.fluxes() # inter-block transmissibility vector
-        wvect = self.boreholes(wells) # wells' block productivity vector list
-        evect = self.edges(edges) # edges' block productivity vector list
+        avect = self.Avec(tstep) # accumulation vector
+        tvect = self.Tvec()      # inter-block transmissibility vector
+        wvect = self.Wvec(wells) # wells' block productivity vector list
+        evect = self.Bvec(edges) # edges' block productivity vector list
 
         return Vector(avect,*tvect,wvect,evect)
 
-    def storage(self,_tstep:float):
+    def Avec(self,_tstep:float):
         """Returns accumulation multiplied compressibility (A.ct).
         Input time-step, _tstep, must be in SI units."""
-        acomp = (self._volume*self.rrock._poro*self._tcomp)/(_tstep)
-        return acomp
+        avect = (self._volume*self.rrock._poro)/(_tstep)
 
-    def fluxes(self):
+        return avect*self._tcomp
+
+    def Tvec(self):
         """Returns xflux, yflux, and zflux in tuple."""
         fluid = (self._mobil,self._power)
 
-        xvect = Mean.diffuse(self._xflow,*fluid,self._xneg,self._xpos)
-        yvect = Mean.diffuse(self._yflow,*fluid,self._yneg,self._ypos)
-        zvect = Mean.diffuse(self._zflow,*fluid,self._zneg,self._zpos)
+        xvect = self.mean.diffuse(self._xflow,*fluid,self._xneg,self._xpos)
+        yvect = self.mean.diffuse(self._yflow,*fluid,self._yneg,self._ypos)
+        zvect = self.mean.diffuse(self._zflow,*fluid,self._zneg,self._zpos)
 
         return xvect,yvect,zvect
 
-    def boreholes(self,wells):
+    def Wvec(self,wells):
         """Returns productivity for all active wells."""
         prods,wells = [],() if wells is None else wells
 
@@ -57,11 +62,11 @@ class Block(Cuboid):
 
             wprop = (well._radius,well.skin)
 
-            well._prod = Mean.potency(k1,k2,w1,w2,w3,*wprop)*self._mobil[list(well.index)]
+            well._prod = self.mean.potency(k1,k2,w1,w2,w3,*wprop)*self._mobil[list(well.index)]
         
         return wells
 
-    def edges(self,edges):
+    def Bvec(self,edges):
         """Returns transmissibility for all active boundaries."""
         prods,edges = [],() if edges is None else edges
 
