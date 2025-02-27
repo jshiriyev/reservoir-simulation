@@ -1,19 +1,27 @@
 import numpy
 
-class Edge():
+class Well():
     """
-    Represents the edges of reservoir in the simulator.
+    Represents a well object used in a reservoir simulator.
     """
     VALID_SORTS = {"press", "lrate", "orate", "wrate", "grate"}
 
-    def __init__(self,face:str,*,start:float=0,stop:float=None,**kwargs):
+    def __init__(self,index:tuple,*,axis:str="z",radius:float=0.5,skin:float=0,start:float=0,stop:float=None,**kwargs):
         """
         Parameters
         ----------
-        face    : boundary: xmin, xmax, ymin, ymax, zmin, or zmax
-
-        start   : start time for implementing the boundary condition, days
-        stop    : stop time for implementing the boundary condition, days
+        index   : tuple[int, ...]
+            All index indices containing the well
+        axis    : str, optional
+            Well orientation ('z' for vertical, 'x' or 'y' for horizontal wells), default is 'z'
+        radius  : float, optional
+            Well radius in feet, default is 0.5
+        skin    : float, optional
+            Skin factor of the well (dimensionless), default is 0
+        start   : float, optional
+            Start time for implementing the well condition (days), default is 0 meaning the start of simulation
+        stop    : float, optional
+            Stop time for implementing the well condition (days), default is None meaning the end of simulation
 
         **kwargs : dict
         Specifies the well constraint. Only one of the following should be provided:
@@ -23,31 +31,41 @@ class Edge():
         - 'wrate' : Constant water rate, (bbl/day)
         - 'grate' : Constant gas rate, (ft3/day)
         """
-        self.face  = face
+        self.index  = index
 
-        self.start = start
-        self.stop  = stop
+        self.axis   = axis
+        self.radius = radius
+        self.skin   = skin
+
+        self.start  = start
+        self.stop   = stop
 
         constraint  = {key:value for key,value in kwargs.items() if value is not None}
 
         if len(constraint)==1:
             self.sort,self.cond = next(iter(constraint.items()))
         elif len(constraint)>1:
-            raise ValueError(f"Multiple edge conditions provided: {list(constraint.keys())}. Assign only one.")
-
-    @property
-    def face(self):
-        """Getter for edge face in grids."""
-        return self._face
-
-    @face.setter
-    def face(self,value:str):
-        """Getter for edge face in grids."""
-        self._face = value
+            raise ValueError(f"Multiple well conditions provided: {list(constraint.keys())}. Assign only one.")
 
     @property
     def axis(self):
-        return self._face[0]
+        """Getter for well axis in grids."""
+        return {0:"x",1:"y",2:"z"}[self._axis]
+    
+    @axis.setter
+    def axis(self,value):
+        """Setter for well axis in grids."""
+        self._axis = {"x":0,"y":1,"z":2}[value]
+
+    @property
+    def radius(self):
+        """Getter for well radius."""
+        return self._radius/0.3048
+
+    @radius.setter
+    def radius(self,value):
+        """Setter for well radius."""
+        self._radius = value*0.3048
 
     @property
     def start(self):
@@ -76,9 +94,9 @@ class Edge():
 
     @sort.setter
     def sort(self,value):
-        """Setter for edge constraint type. Ensures that the assigned value is in VALID_SORTS."""
+        """Setter for well constraint type. Ensures that the assigned value is in VALID_SORTS."""
         if value not in self.VALID_SORTS:
-            raise ValueError(f"Invalid edge constraint type: {value}. Must be one of {self.VALID_SORTS}.")
+            raise ValueError(f"Invalid well constraint type: {value}. Must be one of {self.VALID_SORTS}.")
         self._sort = value
     
     @property
@@ -103,20 +121,23 @@ class Edge():
 
     @property
     def prod(self):
-        """Getter for edge productivity array."""
+        """Getter for well productivity array."""
         return self._prod*(3.28084**3)*(24*60*60)*6894.76
 
     @prod.setter
     def prod(self,value:numpy.ndarray):
-        """Setter for edge productivity array."""
+        """Setter for well productivity array."""
         self._prod = value/(3.28084**3)/(24*60*60)/6894.76
-    
 
 if __name__ == "__main__":
 
-    bcond = Edge("xmin",press=500)
+    well = Well((3,),axis="z",radius=0.5,wrate=500,start=3)
 
-    print(bcond.cond)
-    print(bcond.face)
-    print(bcond.axis)
-    print(bcond.sort)
+    print(well.axis)
+    print(well._axis)
+    print(well.sort)
+    print(well.cond)
+    print(well._cond)
+
+    print(well.start)
+    print(well._start)
