@@ -1,6 +1,28 @@
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Boundary:
+
+    #shape factor, {C_A} value
+    factor: float
+
+    # PSS is exact for higher values
+    time1: float
+    # PSS gives less than 1% error for higher values
+    time2: float = None
+    # Use infinite system solution with less than 1 % Error for lesser values
+    time3: float = None
+
 class Pseudo():
 
     gamma = 1.781
+
+    GEOMETRY = {
+    "circle": Boundary(31.62,0.1),
+    "triangle": Boundary(27.6,0.2),
+    "square": Boundary(30.8828,0.1),
+    "hexagon": Boundary(31.6,0.1),
+    }
 
     def __init__(self,flow_rate,shape="circle"):
 
@@ -21,23 +43,6 @@ class Pseudo():
         self.Well = Wells()(number=1)
 
         self.Well.set_flowconds("rate",flow_rate,"mobfluid")
-
-    def set_shapefactor(self,shape):
-
-        if shape=="circle":
-            self.shapefactor = 31.62
-            self.exactdimtime = 0.1
-        elif shape=="triangle":
-            self.shapefactor = 27.6
-            self.exactdimtime = 0.2
-        elif shape=="square":
-            self.shapefactor = 30.8828
-            self.exactdimtime = 0.1
-        elif shape=="hexagon":
-            self.shapefactor = 31.6
-            self.exactdimtime = 0.1
-
-        self.shape = shape
 
     def initialize(self,pressure0,Swirr=0,ctotal=None):
 
