@@ -1,90 +1,97 @@
-class Transient():
+import numpy
 
-    # Line source solution based on exponential integral
+from scipy import special
 
-    def __init__(self,flow_rate):
+from ._reservoir import Reservoir
 
-        super().__init__(flow_rate)
+class Transient(Reservoir):
+    """Line source solution based on exponential integral"""
 
-    def set_tmin(self):
+    def __init__(self,rate,rw,*args,**kwargs):
 
-        # setting mimimum time limit because of the wellbore size
+        super().__init__(*args,**kwargs)
 
-        self.tmin = 100*self.Well.radii[0]**2/self.diffusivity
+        self.rate = rate
 
-        return self.tmin
+        self.rw = rw
 
-    def set_tmax(self,tmax=None):
+        self.tmin = None
+        self.tmax = None
 
-        # setting maximum time limit because of the external flow radius
-        # if the tmax is provided, new external radius will be calculated 
+    @property
+    def rate(self):
+        return self._rate
+    
+    @rate.setter
+    def rate(self,value):
+        """setting mimimum time limit because of the wellbore size"""
+        self._rate = value
 
-        if tmax is None:
-            tmax = 0.25*self.PorRock.radii[0]**2/self.diffusivity
-        else:
-            tmax_radius = float(np.sqrt(tmax*self.diffusivity/0.25))
-            self.PorRock.set_radii(tmax_radius)
+    @property
+    def rw(self):
+        return self._rw
+    
+    @rw.setter
+    def rw(self,value):
+        self._rw = value
 
-        self.tmax = tmax
+    @property
+    def tmin(self):
+        return self._tmin
+    
+    @tmin.setter
+    def tmin(self,value):
+        """setting mimimum time limit because of the wellbore size"""
+        self._tmin = 100*self._rw**2/self._diffusivity
 
-        return self.tmax
+    @property
+    def tmax(self):
+        return self._tmax
 
-    def set_times(self,times=None,timespace="linear"):
+    @tmax.setter
+    def tmax(self,tmax=None):
+        """setting maximum time limit because of the external flow radius"""
+        self._tmax = 0.25*self._radius**2/self._diffusivity
 
-        if not hasattr(self,"tmin"):
-            self.set_tmin()
+    @property
+    def times(self):
+        return self._times
 
-        if not hasattr(self,"tmax"):
-            self.set_tmax()
+    @times.setter
+    def times(self,values):
 
-        if times is None:
-            if timespace=="linear":
-                times = np.linspace(self.tmin,self.tmax,1000)
-            elif timespace=="log":
-                times = np.logspace(np.log10(self.tmin),np.log10(self.tmax),1000)
-        else:
-            bound_int = times>=self.tmin
-            bound_ext = times<=self.tmax
+        bound_int = values>=self.tmin
+        bound_ext = values<=self.tmax
 
-            if np.any(~bound_int):
-                raise Warning("Not all times satisfy the early time limits!")
+        if numpy.any(~bound_int):
+            raise Warning("Not all times satisfy the early time limits!")
 
-            if np.any(~bound_ext):
-                raise Warning("Not all times satisfy the late time limits!")
+        if numpy.any(~bound_ext):
+            raise Warning("Not all times satisfy the late time limits!")
 
-            validtimes = np.logical_and(bound_int,bound_ext)
+        validtimes = numpy.logical_and(bound_int,bound_ext)
 
-            times = times[validtimes]
+        values = values[validtimes]
 
-        self.times = times.reshape((1,-1))
+        self._times = values.reshape((1,-1))
 
-    def set_observers(self,observers=None,number=50):
+    @property
+    def observers(self):
+        return self._observers
 
-        if observers is not None:
-            self.observers = observers
-        else:
-            inner = self.Well.radii[0]
-            if self.shape == "circular":
-                outer = self.PorRock.radii[0]
-            elif self.shape == "square":
-                outer = self.PorRock.lengths[0]
-            self.observers = np.linspace(inner,outer,number)
+    @observers.setter
+    def observers(self,values):
+        self._observers = numpy.ravel(values).reshape((-1,1))
 
-        self.observers = self.observers.reshape((-1,1))
+    def solve(self,times,observers,pinit=None):
 
-    def solve(self):
+        constant = (self._rate*self.fluid._visc)/(2*numpy.pi*self.rrock._perm*self._height)
+        expivals = special.expi(-(self._observers**2)/(4*self._diffusivity*self._times))
 
-        if not hasattr(self,"times"):
-            self.set_times()
+        deltap = -1/2*constant*expivals
 
-        rateNumer = self.Well.limits*self.Fluids.viscosity[0]
-        rateDenom = self.PorRock.permeability*self.PorRock.thickness
+        if pinit is None:
+            return deltap
 
-        constRate = (rateNumer)/(2*np.pi*rateDenom)
-
-        Ei = expi(-(self.observers**2)/(4*self.diffusivity*self.times))
-
-        self.deltap = -1/2*constRate*Ei
-
-        self.pressure = self.pressure0-self.deltap
+        return pinit-deltap
 
