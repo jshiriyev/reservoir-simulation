@@ -2,17 +2,29 @@ import numpy
 
 class Reservoir():
 
-    def __init__(self,radius,height,rrock,fluid,tcomp=None):
+    def __init__(self,area,height,rrock,fluid,well,tcomp=None):
         """Initialization of matrix building class."""
-        self.radius = radius
+        self.area = area
+
+        self.radius = None
         self.height = height
 
         self.rrock = rrock
         self.fluid = fluid
 
+        self.well = well
+
 		self.tcomp = tcomp
 
-		self.diffusivity = None
+		self.hdiff = None
+
+    @property
+    def area(self):
+        return self._area/(43560*0.3048**2)
+
+    @area.setter
+    def area(self,value):
+        self._area = value*43560*0.3048**2
 
     @property
     def radius(self):
@@ -20,7 +32,7 @@ class Reservoir():
 
    	@radius.setter
    	def radius(self,value):
-   		self._radius = value*0.3048
+   		self._radius = numpy.sqrt(self._area/numpy.pi)
 
    	@property
     def height(self):
@@ -28,7 +40,7 @@ class Reservoir():
 
    	@height.setter
    	def height(self,value):
-   		self._radius = value*0.3048
+   		self._height = value*0.3048
 
    	@property
     def tcomp(self):
@@ -47,10 +59,9 @@ class Reservoir():
             self._tcomp = value/6894.76
 
    	@property
-    def diffusivity(self):
-        return self._diffusivity
+    def hdiff(self):
+        return self._hdiff
     
-    @diffusivity.setter
-    def diffusivity(self,value):
-        self._diffusivity = self.rrock._perm/(self.rrock._poro*self.fluid._visc*self._tcomp)
-    
+    @hdiff.setter
+    def hdiff(self,value):
+        self._hdiff = self.rrock._perm/(self.rrock._poro*self.fluid._visc*self._tcomp)

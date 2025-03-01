@@ -7,13 +7,9 @@ from ._reservoir import Reservoir
 class Transient(Reservoir):
     """Line source solution based on exponential integral"""
 
-    def __init__(self,rate,rw,*args,**kwargs):
+    def __init__(self,*args,**kwargs):
 
         super().__init__(*args,**kwargs)
-
-        self.rate = rate
-
-        self.rw = rw
 
         self.tmin = None
         self.tmax = None

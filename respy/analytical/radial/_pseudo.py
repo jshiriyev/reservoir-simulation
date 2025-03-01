@@ -7,76 +7,65 @@ class Boundary:
     factor: float
 
     # PSS is exact for higher values
-    time1: float
+    time_accurate: float
     # PSS gives less than 1% error for higher values
-    time2: float = None
+    time_error_prone: float = None
     # Use infinite system solution with less than 1 % Error for lesser values
-    time3: float = None
+    time_infinite: float = None
 
 class Pseudo():
 
     gamma = 1.781
 
     GEOMETRY = {
-    "circle": Boundary(31.62,0.1),
-    "triangle": Boundary(27.6,0.2),
-    "square": Boundary(30.8828,0.1),
-    "hexagon": Boundary(31.6,0.1),
-    }
+        "circle": Boundary(31.62,0.1),
+        "triangle": Boundary(27.6,0.2),
+        "square": Boundary(30.8828,0.1),
+        "hexagon": Boundary(31.6,0.1),
+        }
 
-    def __init__(self,flow_rate,shape="circle"):
-
-        if shape=="square" or shape=="rectangle":
-            geo = "rectangle"
-        elif shape=="circle" or shape=="ellipse":
-            geo = "ellipse"
-
-        self.PorRock = PorRock(geo=geo)(window=None)
-
-        self.set_shapefactor(shape)
-        
+    def __init__(self,*args,**kwargs):
         # There can be two slightly compressible fluids where the
         # second one is at irreducible saturation, not mobile
 
-        self.Fluids = Fluids()(number=2)
-
-        self.Well = Wells()(number=1)
-
-        self.Well.set_flowconds("rate",flow_rate,"mobfluid")
+        super().__init__(*args,**kwargs)
 
     def initialize(self,pressure0,Swirr=0,ctotal=None):
 
         steady.initialize(self,pressure0,Swirr,ctotal)
 
-    def set_tmin(self):
+    @property
+    def tmin(self):
+        return self._tmin
 
-        self.tmin = self.exactdimtime*self.PorRock.area/self.diffusivity
+    @tmin.setter
+    def tmin(self,value):
+        """setting mimimum time limit because of the wellbore size"""
+        self._tmin = self.exactdimtime*self.PorRock.area/self.diffusivity
 
-    def set_tmax(self,tmax=None):
+    @property
+    def times(self):
+        return self._times
 
-        if tmax is None:
-            tmax = self.tmin+1_000_000
+    @times.setter
+    def times(self,values):
 
-        self.tmax = tmax
+        bound = values>=self.tmin
 
-    def set_times(self,times=None,timespace="linear"):
+        if numpy.any(~bound):
+            raise Warning("Not all times satisfy the early time limits!")
 
-        if not hasattr(self,"tmin"):
-            self.set_tmin()
+        values = values[bound]
 
-        if not hasattr(self,"tmax"):
-            self.set_tmax()
+        self._times = values.reshape((1,-1))
 
-        if times is None:
-            if timespace=="linear":
-                times = np.linspace(self.tmin,self.tmax,1000)
-            elif timespace=="log":
-                times = np.logspace(np.log10(self.tmin),np.log10(self.tmax),1000)
-        else:
-            validtimes = times>self.tmin
-            times = times[validtimes]
-
-        self.times = times.reshape((1,-1))
+    @property
+    def vpore(self):
+        return self._vpore
+    
+    @vpore.setter
+    def vpore(self,value):
+        self._vpore = self.res._area*self.res._height*self.rock._poro
 
     def solve(self):
 
