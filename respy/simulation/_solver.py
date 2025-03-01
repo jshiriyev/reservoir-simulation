@@ -28,52 +28,52 @@ class BaseSolver(Block):
         super().__init__(grids,rrock,fluid,tcomp)
 
     @property
-    def method(self):
-        return Method
+    def iterator(self):
+        return Iterator
 
     @property
     def residual(self):
         return Residual
     
 
-class Method:
+class Iterator:
 
     @staticmethod
-    def explicit(Mprev,Pprev):
+    def explicit(mat,Pprev):
         """Explicit pressure solution returning Pnext."""
-        RHS = csr.dot(-(Mprev._T+Mprev._J),Pprev)+Mprev._Q+Mprev._G
+        RHS = csr.dot(-(mat._T+mat._J),Pprev)+mat._Q+mat._G
 
-        return Pprev+linalg.spsolve(Mprev._A,RHS)
+        return Pprev+linalg.spsolve(mat._A,RHS)
 
     @staticmethod
-    def mixed(Mprev,Mnext,Pprev,theta:float=0.5):
+    def mixed(mat,Pprev,theta:float=0.5):
         """Mixed pressure solution returning Pnext."""
-        LHS = (1-theta)*(Mnext._T+Mnext._J)+Mnext._A
-        RHS = csr.dot(Mprev._A-theta*(Mprev._T+Mprev._J),Pprev)+Mprev._Q+Mprev._G
+        LHS = (1-theta)*(mat._T+mat._J)+mat._A
+        RHS = csr.dot(mat._A-theta*(mat._T+mat._J),Pprev)+mat._Q+mat._G
 
         return linalg.spsolve(LHS,RHS)
 
     @staticmethod
-    def implicit(Mnext,Pprev):
+    def implicit(mat,Pprev):
         """Implicit pressure solution returning Pnext."""
-        LHS = Mnext._T+Mnext._J+Mnext._A
-        RHS = csr.dot(Mnext._A,Pprev)+Mnext._Q+Mnext._G
+        LHS = mat._T+mat._J+mat._A
+        RHS = csr.dot(mat._A,Pprev)+mat._Q+mat._G
         
         return linalg.spsolve(LHS,RHS)
 
 class Residual:
 
     @staticmethod
-    def explicit(Mprev,Pprev,Pnext):
+    def explicit(mat,Pprev,Pnext):
         """Returns residual vector in SI units, (m**3)/(sec)"""
-        RHS = csr.dot(Mprev._A-(Mprev._T+Mprev._J),Pprev)+Mprev._Q+Mprev._G
+        RHS = csr.dot(mat._A-(mat._T+mat._J),Pprev)+mat._Q+mat._G
 
-        return -csr.dot(Mprev._A,Pnext)+RHS
+        return -csr.dot(mat._A,Pnext)+RHS
 
     @staticmethod
-    def implicit(Mnext,Pprev,Pnext):
+    def implicit(mat,Pprev,Pnext):
         """Returns residual vector in SI units, (m**3)/(sec)"""
-        LHS = Mnext._T+Mnext._J+Mnext._A
-        RHS = csr.dot(Mnext._A,Pprev)+Mnext._Q+Mnext._G
+        LHS = mat._T+mat._J+mat._A
+        RHS = csr.dot(mat._A,Pprev)+mat._Q+mat._G
 
         return -csr.dot(LHS,Pnext)+RHS

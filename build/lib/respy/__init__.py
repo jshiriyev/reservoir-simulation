@@ -1,7 +1,7 @@
 # Analytical Solution
-# from . import linear
-# from . import radial
-# from . import green
+# from .analytical import linear
+from .analytical import radial
+# from .analytical import green
 
 # 1. Input Data
 

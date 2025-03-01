@@ -68,6 +68,16 @@ class Well():
         self._radius = value*0.3048
 
     @property
+    def skin(self):
+        """Getter for well skin."""
+        return self._skin
+    
+    @skin.setter
+    def skin(self,value):
+        """Setter for well skin."""
+        self._skin = value
+
+    @property
     def start(self):
         """Getter for well constraint start time."""
         return self._start/(24*60*60)
