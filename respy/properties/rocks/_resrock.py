@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 class RRock():
 	"""
@@ -14,13 +14,13 @@ class RRock():
         ----------
 		*args and **kwargs : Passed to self.set_permeability(*args,**kwargs)
 		
-		poro 	: float or numpy.ndarray of floats, optional
+		poro 	: float or np.ndarray of floats, optional
 			Porosity of the rock, dimensionless
 
-		comp 	: float or numpy.ndarray of floats, optional
+		comp 	: float or np.ndarray of floats, optional
 			Isothermal compressibility factor of rock, 1/psi
 
-		press   : float or numpy.ndarray of floats, optional
+		press   : float or np.ndarray of floats, optional
 			Pressure at which properties are defined, psi
 
 		"""
@@ -42,13 +42,21 @@ class RRock():
 
 		"""
 		self.xperm = xperm
-		self.yperm = self.xperm*yreduce if yperm is None else numpy.ravel(yperm).astype(float)
-		self.zperm = self.xperm*zreduce if zperm is None else numpy.ravel(zperm).astype(float)
+		self.yperm = self.xperm*yreduce if yperm is None else np.ravel(yperm).astype(float)
+		self.zperm = self.xperm*zreduce if zperm is None else np.ravel(zperm).astype(float)
 
 	@property
 	def perm(self):
 		"""Getter for the reservoir permeability."""
-		return numpy.column_stack((self.xperm,self.yperm,self.zperm))
+		if not hasattr(self,"_perm"):
+			self.perm = None
+
+		return self._perm/9.869233e-16
+
+	@perm.setter
+	def perm(self,value):
+		"""Setter for the reservoir permeability."""
+		self._perm = np.column_stack((self._xperm,self._yperm,self._zperm))
 
 	@property
 	def xperm(self):
@@ -58,7 +66,7 @@ class RRock():
 	@xperm.setter
 	def xperm(self,value):
 		"""Setter for the reservoir permeability in x-direction."""
-		self._xperm = numpy.ravel(value).astype(float)*9.869233e-16
+		self._xperm = np.ravel(value).astype(float)*9.869233e-16
 
 	@property
 	def yperm(self):
@@ -88,7 +96,7 @@ class RRock():
 	@poro.setter
 	def poro(self,value):
 		"""Setter for the porosity values if value is available; otherwise sets None."""
-		self._poro = None if value is None else numpy.ravel(value).astype(float)
+		self._poro = None if value is None else np.ravel(value).astype(float)
 
 	@property
 	def comp(self):
@@ -98,7 +106,7 @@ class RRock():
 	@comp.setter
 	def comp(self,value):
 		"""Setter for the compressibility value in 1/Pa if value is available; otherwise sets None."""
-		self._comp = None if value is None else numpy.ravel(value).astype(float)/6894.75729
+		self._comp = None if value is None else np.ravel(value).astype(float)/6894.75729
 
 	@property
 	def press(self):
@@ -108,7 +116,7 @@ class RRock():
 	@press.setter
 	def press(self,value):
 		"""Setter for the pressure value in Pa if value is available; otherwise sets None."""
-		self._press = None if value is None else numpy.ravel(value).astype(float)*6894.76
+		self._press = None if value is None else np.ravel(value).astype(float)*6894.76
 
 if __name__ == "__main__":
 
@@ -117,5 +125,8 @@ if __name__ == "__main__":
 	print(rrock.xperm)
 	print(rrock.yperm)
 	print(rrock.zperm)
+
+	print(rrock.perm)
+	
 	print(rrock.poro)
 
