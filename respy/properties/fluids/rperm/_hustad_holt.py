@@ -1,31 +1,12 @@
-class RelPerm():
-    """
+import numpy as np
 
+class StonesI():
+    """
     This Model Provides IMBIBITION Relative Permeability MODELS for a system provided.
 
     So      = oil saturation
     Sw      = water saturation
     Sg      = gas saturation
-    
-    MODEL: OIL-WATER system
-
-    Sorow   = residual oil saturation in oil-water system
-    Swc     = connate water saturation
-    krowc   = oil relative permeability at connate water saturaton
-    krwor   = water relative permeability at the residual oil saturation
-    no      = oil exponent on relative permeability curve
-    nw      = water exponent on relative permeability curve
-
-    MODEL: GAS-OIL system
-
-    Sorgo   = residual oil saturation in gas-oil system
-    Swc     = connate water saturation
-    Slc     = critical liquid saturation = Swc+Sor
-    Sgc     = critical gas saturation
-    krogc   = oil relative permeability at critical gas saturation
-    krglc   = gas relative permeability at critical liquid saturation
-    no      = oil exponent on relative permeability curve
-    ng      = gas exponent on relative permeability curve
 
     MODEL: THREE-PHASE system
 
@@ -59,30 +40,6 @@ class RelPerm():
         self.ng     = ng
 
         self.Som    = Som
-        
-    def water_oil(self,Sw):
-
-        movable_w = Sw-self.Swc
-        movable_o = 1-Sw-self.Sorow
-        movable_l = 1-self.Sorow-self.Swc
-        
-        krw = self.krwor*(movable_w/movable_l)**self.nw
-        kro = self.krowc*(movable_o/movable_l)**self.no
-
-        return krw,kro
-
-    def gas_oil(self,Sg):
-
-        Slc = self.Sorgo+self.Swc
-        
-        movable_g = Sg-self.Sgc
-        movable_o = 1-Slc-Sg
-        movable_f = 1-Slc-self.Sgc
-
-        krg = self.krglc*(movable_g/movable_f)**self.ng
-        kro = self.krogc*(movable_o/movable_f)**self.no
-
-        return krg,kro
 
     def system3phase(self,Sw,So,Sg,model="Stone's Model I",n=None):
 

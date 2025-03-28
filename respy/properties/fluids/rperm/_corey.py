@@ -1,24 +1,66 @@
 import numpy as np
 
-def k_model(self):
+class Corey():
+    """
+    Implements the Corey-type relative permeability model for two-phase system.
 
-    N = 1000
+    """
 
-    self.Sw = np.linspace(self.Swr,1-self.Sor,N)
+    def __init__(self,swr:float,snwr:float,korw:float,kornw:float):
+        """Initializes the class.
 
-    self.kro = 2*(1-self.Sw-self.Sor)**2
-    self.krw = (self.Sw-self.Swr)**3
+        Parameters:
+        ----------
+        swr   : float
+            residual saturation of wetting phase
+        snwr  : float
+            residual saturation of non-wetting phase.
+        korw  : float
+            End-point wetting phase relative permeability (at snwr).
+        kornw : float
+            End-point non-wetting phase relative permeability (at swr).
+        lamda : float
 
-def coreymodel(self,koro,korw,m,n):
+        """
+        self.swr  = swr
+        self.snwr = snwr
 
-    N = 1000
+        self.korw  = korw
+        self.kornw = kornw
 
-    self.Sw = np.linspace(self.Swr,1-self.Sor,N)
+        self.lamda = lamda
 
-    S = (self.Sw-self.Swr)/(1-self.Swr-self.Sor)
+    def drainage(self,sw:np.ndarray):
+        """Computes relative permeabilities at a given wetting phase saturation.
 
-    self.kro = koro*(1-S)**m
-    self.krw = korw*S**n
+        Parameters:
+        ----------
+        sw   : numpy array
+            wetting phase saturation.
 
-    ## end-point mobility ratio calculation
-    self.Mo = (korw/self.muw)/(koro/self.muo)
+        Returns:
+        -------
+        krw  : numpy array
+            wetting phase relative permeability.
+        krnw : numpy array
+            non-wetting phase relative permeability.
+
+        """
+        S = self.dimless(sw)
+
+        krw = self.korw*S**(2/self.lamda+3)
+        krnw = self.kornw*(1-S)**2*(1-S**(2/self.lamda+1))
+
+        return krw,krnw
+
+    def dimless(self,sw:np.ndarray):
+        """Returns dimensionless saturation values."""
+        return np.clip((np.ravel(sw)-self.swr)/(1-self.swr),0,1)
+
+    @staticmethod
+    def mobility(krw:np.ndarray,kro:np.ndarray,muw:np.ndarray,muo:np.ndarray):
+        """Returns mobility values"""
+        lambda_w = np.ravel(krw)/np.ravel(muw)  # Water mobility
+        lambda_o = np.ravel(kro)/np.ravel(muo)  # Oil mobility
+
+        return lambda_w/lambda_o
