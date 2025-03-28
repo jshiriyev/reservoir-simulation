@@ -1,6 +1,6 @@
 import numpy as np
 
-def gas_oil(sg:np.ndarray,method="brooks_corey"):
+def gas_oil(method="brooks_corey",**kwargs):
 	"""
 	Gas-oil system relative permeability model
 

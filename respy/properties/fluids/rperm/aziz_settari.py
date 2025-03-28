@@ -35,7 +35,7 @@ class AzizSettari():
 
         self.Som    = Som
 
-    def _aziz_settari(self,Sw,So,Sg):
+    def imbibition(self,Sw,So,Sg):
         """
         Sw      = water saturation
         So      = oil saturation

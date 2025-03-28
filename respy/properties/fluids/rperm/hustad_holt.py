@@ -1,6 +1,6 @@
 import numpy as np
 
-class StonesI():
+class HustadHolt():
     """
     This Model Provides IMBIBITION Relative Permeability MODELS for a system provided.
 
@@ -41,91 +41,7 @@ class StonesI():
 
         self.Som    = Som
 
-    def system3phase(self,Sw,So,Sg,model="Stone's Model I",n=None):
-
-        if self.Som is None:
-            self._estimate_Som(Sg)
-
-        if model=="Stone's Model I":
-            self.kro,self.krw,self.krg = self._stones_model_I(Sw,So,Sg)
-        elif model=="Aziz and Settari":
-            self.kro,self.krw,self.krg = self._aziz_settari(Sw,So,Sg)
-        elif model=="Stone's Model II":
-            self.kro,self.krw,self.krg = self._stones_model_II(Sw,So,Sg)
-        elif model=="Hustad-Holt Correlation":
-            self.kro,self.krw,self.krg = self._hustad_holt(Sw,So,Sg,n)
-
-    def _stones_model_I(self,Sw,So,Sg):
-
-        movable_o = So-self.Som
-        movable_w = Sw-self.Swc
-        movable_g = Sg
-
-        movable_f = 1-self.Swc-self.Som
-
-        So_star = movable_o/movable_f
-        Sw_star = movable_w/movable_f
-        Sg_star = movable_g/movable_f
-
-        kroow,krw = self.water_oil(Sw,So)
-        krogo,krg = self.gas_oil(Sw,So,Sg)
-
-        beta_w = (kroow)/(1-Sw_star)
-        beta_g = (krogo)/(1-Sg_star)
-
-        kro = So_star*beta_w*beta_g
-
-        return kro,krw,krg
-
-    def _estimate_Som(self,Sg):
-
-        alpha = 1-(Sg)/(1-self.Swc-self.Sorgo)
-
-        Som = alpha*self.Sorow+(1-alpha)*self.Sorgo
-
-        return Som
-
-    def _aziz_settari(self,Sw,So,Sg):
-        
-        movable_o = So-self.Som
-        movable_w = Sw-self.Swc
-        movable_g = Sg
-
-        movable_f = 1-self.Swc-self.Som
-
-        So_star = movable_o/movable_f
-        Sw_star = movable_w/movable_f
-        Sg_star = movable_g/movable_f
-
-        kroow,krw = self.water_oil(Sw,So)
-        krogo,krg = self.gas_oil(Sw,So,Sg)
-
-        beta = (So_star)/(1-Sw_star)/(1-Sg_star)
-
-        kro = (kroow*krogo)/(self.krowc)*beta
-
-        return kro,krw,krg
-
-    def _stones_model_II(self,Sw,So,Sg):
-
-        movable_o = So-self.Som
-        movable_w = Sw-self.Swc
-        movable_g = Sg
-
-        movable_f = 1-self.Swc-self.Som
-
-        So_star = movable_o/movable_f
-        Sw_star = movable_w/movable_f
-        Sg_star = movable_g/movable_f
-
-        kroow,krw = self.water_oil(Sw,So)
-        krogo,krg = self.gas_oil(Sw,So,Sg)
-
-        kro = self.krowc*((kroow/self.krowc+krw)*(krogo/self.krowc+krg)-(krw+krg))
-
-        return kro,krw,krg
-
-    def _hustad_holt(self,Sw,So,Sg,n):
+    def imbibition(self,Sw,So,Sg,n):
 
         movable_o = So-self.Som
         movable_w = Sw-self.Swc

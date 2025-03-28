@@ -1,4 +1,4 @@
-def oil_water(method="brooks_corey"):
+def oil_water(method="brooks_corey",**kwargs):
 	"""
 	Oil-water system relative permeability model
 
