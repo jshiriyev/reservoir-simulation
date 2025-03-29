@@ -1,23 +1,22 @@
-import os
-import sys
+import os, sys
 
-import numpy
+import numpy as np
 
-def zfactor(critical_params:tuple,pressures:numpy.ndarray,temperature:float,derivative:bool=False,method:str="direct_method"):
+def zfactor(critical_params:tuple,pressures:np.ndarray,temperature:float,derivative:bool=False,method:str="direct_method"):
 	"""
 	Dynamically calculates z-factor based on the specified method.
 
 	Parameters:
 	    critical_params (tuple): tuple of (pcrit in psi, tcrit in Rankine)
 
-	    pressures (numpy.ndarray): Array of pressure values (psi) to calculate z-factor for.
+	    pressures (np.ndarray): Array of pressure values (psi) to calculate z-factor for.
 	    temperature (float): The temperature value (Rankine) at which to calculate z-factor.
 	    
 	    method_name (str): The name of the method to use:
 	    	(e.g., 'direct_method', 'dranchuk_abu_kassem', 'dranchuk_purvis_robinson', 'hall_yarborough').
 	    
 	Returns:
-	    numpy.ndarray: Z-factor, and if derivative is True, Z-prime values calculated for each pressure.
+	    np.ndarray: Z-factor, and if derivative is True, Z-prime values calculated for each pressure.
 	    
 	"""
 	sys.path.append(os.path.dirname(__file__))

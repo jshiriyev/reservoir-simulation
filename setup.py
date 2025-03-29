@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name = 'respy',
-	version = '0.0.48',
+	version = '0.0.52',
 	packages = find_packages(),
 	install_requires = [
 		'numpy>=1.26.4',

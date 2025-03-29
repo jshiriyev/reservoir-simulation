@@ -30,6 +30,7 @@ class Well():
         - 'orate' : Constant oil rate, (bbl/day)
         - 'wrate' : Constant water rate, (bbl/day)
         - 'grate' : Constant gas rate, (ft3/day)
+        
         """
         self.index  = index
 

@@ -10,9 +10,11 @@ from .grids import Grids, GridDelta, GridRegular
 
 # 3. Property Calculation
 from .properties import Fluid
+# from .properties import cpres
 # from .properties import phaseg
-# from .properties import cappres
-# from .properties import relperm
+# from .properties import phaseo
+# from .properties import phasew
+from .properties import rperm
 from .properties import RRock
 
 # 4. Configuration

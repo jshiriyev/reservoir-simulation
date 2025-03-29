@@ -13,9 +13,9 @@ from . import phaseg
 # from . import phaseo
 # from . import phasew
 
-# from . import cpress as CapPress
+# from . import cpress
 
-# from . import rperm as RelPerm
+from . import rperm
 
 from ._fluid import Fluid
 

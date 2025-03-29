@@ -30,7 +30,11 @@ class Corey():
 
         self.lamda = lamda
 
-    def drainage(self,sw:np.ndarray):
+    def swd(self,sw:np.ndarray):
+        """Returns dimensionless saturation values."""
+        return np.clip((np.ravel(sw)-self.swr)/(1-self.swr),0,1)
+
+    def get(self,sw:np.ndarray):
         """Computes relative permeabilities at a given wetting phase saturation.
 
         Parameters:
@@ -46,16 +50,12 @@ class Corey():
             non-wetting phase relative permeability.
 
         """
-        S = self.dimless(sw)
+        S = self.swd(sw)
 
         krw = self.korw*S**(2/self.lamda+3)
         krnw = self.kornw*(1-S)**2*(1-S**(2/self.lamda+1))
 
         return krw,krnw
-
-    def dimless(self,sw:np.ndarray):
-        """Returns dimensionless saturation values."""
-        return np.clip((np.ravel(sw)-self.swr)/(1-self.swr),0,1)
 
     @staticmethod
     def mobility(krw:np.ndarray,kro:np.ndarray,muw:np.ndarray,muo:np.ndarray):

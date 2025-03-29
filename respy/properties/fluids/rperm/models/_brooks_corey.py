@@ -29,7 +29,13 @@ class BrooksCorey():
         self.nw = nw
         self.no = no
 
-    def imbibition(self,sw:np.ndarray):
+    def swd(self,sw):
+        """Returns dimensionless water saturation (starred)."""
+        values = (np.ravel(sw)-self.swr)/(1-self.swr-self.sor)
+
+        return np.clip(values,0,1)
+
+    def get(self,sw:np.ndarray):
         """Computes relative permeabilities krw and kro at given wetting phase saturation, sw.
 
         Parameters:
@@ -42,30 +48,19 @@ class BrooksCorey():
         kro : np.ndarray, oil relative permeability.
 
         """
-        moving_w = np.ravel(sw)-self.swr # Movable water saturation
-        moving_f = 1-self.swr-self.sor   # Movable fluid (water-oil) saturation
-
-        S = np.clip(moving_w/moving_f,0,1) # Dimensionless saturation values
+        S = self.swd(sw)
         
         krw = self.k0rw*S**self.nw
         kro = self.k0ro*(1-S)**self.no
 
         return krw,kro
 
-    @staticmethod
-    def mobility(krw:np.ndarray,kro:np.ndarray,muw:np.ndarray,muo:np.ndarray):
-        """Returns mobility values"""
-        lambda_w = np.ravel(krw)/np.ravel(muw)  # water mobility
-        lambda_o = np.ravel(kro)/np.ravel(muo)  # oil mobility
-
-        return lambda_w/lambda_o
-
 if __name__ == "__main__":
 
     rp = BrooksCorey(0.1,0.4,0.3,0.8)
 
-    print(rp.imbibition(0.3))
+    print(rp.get(0.3))
 
     rp = BrooksCorey(0.3,0.05,0.8,0.3)
 
-    print(rp.imbibition(0.8))
+    print(rp.get(0.8))
