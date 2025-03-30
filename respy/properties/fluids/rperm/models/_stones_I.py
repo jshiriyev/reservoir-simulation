@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._brooks_corey import BrooksCorey
+from _brooks_corey import BrooksCorey
 
 class StonesI():
     """
@@ -171,7 +171,7 @@ class StonesI():
 
         return beta*(kro_ow*kro_go)/self.k0ro_ow
     
-    def get(self,sw:np.ndarray,so:np.ndarray,sg:np.ndarray):
+    def get(self,sw:np.ndarray=None,so:np.ndarray=None,sg:np.ndarray=None):
         """Computes three-phase relative permeabilities krw, kro and krg.
 
         Parameters:
@@ -181,6 +181,28 @@ class StonesI():
         sg : gas saturation
 
         """
+        # Ensure at least two saturation values are provided        
+        if sum([s is not None for s in (sw, so, sg)]) < 2:
+            raise ValueError("At least two phase saturations must be provided.")
+
+        # Calculate the missing saturation
+        if sw is None:
+            sw = 1 - (so + sg)
+        elif so is None:
+            so = 1 - (sw + sg)
+        elif sg is None:
+            sg = 1 - (sw + so)
+
+        # Validate saturations
+        if not np.all(np.logical_and(sw >= 0, sw <= 1)):
+            raise ValueError("Water saturation is out of bounds. Check input values.")
+
+        if not np.all(np.logical_and(so >= 0, so <= 1)):
+            raise ValueError("Oil saturation is out of bounds. Check input values.")
+
+        if not np.all(np.logical_and(sg >= 0, sg <= 1)):
+            raise ValueError("Gas saturation is out of bounds. Check input values.")
+
         krw,kro_ow = self.ow.get(sw)
         kro_go,krg = self.go.get(sw+so)
 
@@ -199,7 +221,6 @@ if __name__ == "__main__":
 
     # print(rp.get(0.3,0.5,0.2))
 
-    rp = Stones(swr=0.15,sor_ow=0.15,sor_go=0.05,sgr=0.1,k0rw=0.3,k0ro_ow=0.88,k0ro_go=0.8,k0rg=0.3)
+    rp = StonesI(swr=0.15,sor_ow=0.15,sor_go=0.05,sgr=0.1,k0rw=0.3,k0ro_ow=0.88,k0ro_go=0.8,k0rg=0.3)
 
-    print(rp.model_1(0.3,0.4,0.3,0.406,0.175))
-    print(rp.model_2(0.030,0.406,0.175,0.035))
+    print(rp.kro(0.3,0.4,0.3,0.406,0.175))
