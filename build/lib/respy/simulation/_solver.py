@@ -34,46 +34,39 @@ class BaseSolver(Block):
     @property
     def residual(self):
         return Residual
-    
 
 class Iterator:
 
     @staticmethod
-    def explicit(mat,Pprev):
-        """Explicit pressure solution returning Pnext."""
-        RHS = csr.dot(-(mat._T+mat._J),Pprev)+mat._Q+mat._G
+    def explicit(mat,Pn):
+        """Explicit pressure solution returning P_{n+1}."""
+        RHS = csr.dot(-(mat._T+mat._J),Pn)+mat._Q+mat._G
 
-        return Pprev+linalg.spsolve(mat._A,RHS)
+        return Pn+linalg.spsolve(mat._A,RHS)
 
     @staticmethod
-    def mixed(mat,Pprev,theta:float=0.5):
-        """Mixed pressure solution returning Pnext."""
+    def mixed(mat,Pn,theta:float=0.5):
+        """Mixed pressure solution returning P_{n+1}."""
         LHS = (1-theta)*(mat._T+mat._J)+mat._A
-        RHS = csr.dot(mat._A-theta*(mat._T+mat._J),Pprev)+mat._Q+mat._G
+        RHS = csr.dot(mat._A-theta*(mat._T+mat._J),Pn)+mat._Q+mat._G
 
         return linalg.spsolve(LHS,RHS)
 
     @staticmethod
-    def implicit(mat,Pprev):
-        """Implicit pressure solution returning Pnext."""
-        LHS = mat._T+mat._J+mat._A
-        RHS = csr.dot(mat._A,Pprev)+mat._Q+mat._G
+    def implicit(mat,Pn):
+        """Implicit pressure solution returning P_{n+1}."""
+        RHS = csr.dot(mat._A,Pn)+mat._Q+mat._G
         
-        return linalg.spsolve(LHS,RHS)
+        return linalg.spsolve(mat._T+mat._J+mat._A,RHS)
 
 class Residual:
 
     @staticmethod
-    def explicit(mat,Pprev,Pnext):
+    def explicit(mat,Pn,P):
         """Returns residual vector in SI units, (m**3)/(sec)"""
-        RHS = csr.dot(mat._A-(mat._T+mat._J),Pprev)+mat._Q+mat._G
-
-        return -csr.dot(mat._A,Pnext)+RHS
+        return -csr.dot(mat._A,P)+csr.dot(mat._A-(mat._T+mat._J),Pn)+mat._Q+mat._G
 
     @staticmethod
-    def implicit(mat,Pprev,Pnext):
+    def implicit(mat,Pn,P):
         """Returns residual vector in SI units, (m**3)/(sec)"""
-        LHS = mat._T+mat._J+mat._A
-        RHS = csr.dot(mat._A,Pprev)+mat._Q+mat._G
-
-        return -csr.dot(LHS,Pnext)+RHS
+        return -csr.dot(mat._T+mat._J+mat._A,P)+csr.dot(mat._A,Pn)+mat._Q+mat._G

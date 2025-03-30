@@ -43,3 +43,9 @@ class StonesII(StonesI):
         kro[sod>1] = self.k0ro_ow
 
         return krw,kro,krg
+
+if __name__ == "__main__":
+
+    rp = StonesII(swr=0.15,sor_ow=0.15,sor_go=0.05,sgr=0.1,k0rw=0.3,k0ro_ow=0.88,k0ro_go=0.8,k0rg=0.3)
+
+    print(rp.kro(0.030,0.406,0.175,0.035))

@@ -1,6 +1,6 @@
 import numpy as np
 
-from _brooks_corey import BrooksCorey
+from ._brooks_corey import BrooksCorey
 
 class StonesI():
     """
@@ -18,7 +18,8 @@ class StonesI():
         k0ro_go : float = 0.8,
         k0rg    : float = 0.3,
         nw      : float = 2,
-        no      : float = 2,
+        no_ow   : float = 2,
+        no_go   : float = 2,
         ng      : float = 2,
         method  : str = "average",
         ):
@@ -36,9 +37,10 @@ class StonesI():
         k0ro_go = oil relative permeability at residual gas saturation in gas-oil system
         k0rg    = gas relative permeability at residual liquid saturation in gas-oil system
 
-        nw      = water exponent on relative permeability curve
-        no      = oil exponent on relative permeability curve
-        ng      = gas exponent on relative permeability curve
+        nw      = water exponent on relative permeability curve in oil-water system
+        no_ow   = oil exponent on relative permeability curve in oil-water system
+        no_go   = oil exponent on relative permeability curve in gas-oil system
+        ng      = gas exponent on relative permeability curve in gas-oil system
 
         method  = som calculation method, defaults to average.
 
@@ -54,7 +56,8 @@ class StonesI():
         self.k0rg = k0rg
 
         self.nw      = nw
-        self.no      = no
+        self.no_ow   = no_ow
+        self.no_go   = no_go
         self.ng      = ng
 
         self.method  = method
@@ -83,7 +86,7 @@ class StonesI():
     @oil_water.setter
     def oil_water(self,value):
         """Setter for the oil-water relative permeability model."""
-        self._oil_water = BrooksCorey(self.swr,self.sor_ow,self.k0rw,self.k0ro_ow,self.nw,self.no)
+        self._oil_water = BrooksCorey(self.swr,self.sor_ow,self.k0rw,self.k0ro_ow,self.nw,self.no_ow)
 
     @property
     def go(self):
@@ -104,7 +107,7 @@ class StonesI():
     @gas_oil.setter
     def gas_oil(self,value):
         """Setter for the gas-oil relative permeability model."""
-        self._gas_oil = BrooksCorey(self.slr_go,self.sgr,self.k0ro_go,self.k0rg,self.no,self.ng)
+        self._gas_oil = BrooksCorey(self.slr_go,self.sgr,self.k0ro_go,self.k0rg,self.no_go,self.ng)
 
     def swd(self,sw:np.ndarray):
         """Returns dimensionless water saturation."""
@@ -167,9 +170,14 @@ class StonesI():
         so_star = self.so_star(so,som)
         sg_star = self.sg_star(sg,som)
 
-        beta = (so_star)/(1-sw_star)/(1-sg_star)
+        upper = so_star*kro_ow*kro_go
+        lower = (1-sw_star)*(1-sg_star)*self.k0ro_ow
 
-        return beta*(kro_ow*kro_go)/self.k0ro_ow
+        rperm = np.copy(upper)
+
+        rperm[upper!=0] /= lower[upper!=0]
+
+        return rperm
     
     def get(self,sw:np.ndarray=None,so:np.ndarray=None,sg:np.ndarray=None):
         """Computes three-phase relative permeabilities krw, kro and krg.
@@ -217,10 +225,26 @@ class StonesI():
 
 if __name__ == "__main__":
 
-    # rp = StonesI(swr=0.1,sor_ow=0.4,sor_go=0.2,sgr=0.05,k0rw=0.3,k0ro_ow=0.8,k0ro_go=0.8,k0rg=0.3)
+    rp = StonesI(swr=0.1,sor_ow=0.4,sor_go=0.2,sgr=0.05,k0rw=0.3,k0ro_ow=0.8,k0ro_go=0.8,k0rg=0.3)
 
-    # print(rp.get(0.3,0.5,0.2))
+    print(rp.get(0.3,0.5,0.2))
 
     rp = StonesI(swr=0.15,sor_ow=0.15,sor_go=0.05,sgr=0.1,k0rw=0.3,k0ro_ow=0.88,k0ro_go=0.8,k0rg=0.3)
 
     print(rp.kro(0.3,0.4,0.3,0.406,0.175))
+
+    N = 20
+
+    i, j = np.meshgrid(np.arange(N+1), np.arange(N+1))
+
+    mask = i + j <= N
+
+    i, j = i[mask], j[mask]
+
+    sw = i / N
+    so = j / N
+    # sg = 1.0 - sw - so
+
+    # print(sg)
+    
+    krw,kro,krg = rp.get(sw=sw,so=so)
