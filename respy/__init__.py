@@ -1,28 +1,6 @@
-# Analytical Solution
-# from .analytical import linear
-from .analytical import radial
-# from .analytical import green
+# reservoir rock and fluid properties
 
-# 1. Input Data
+from .fluids import rperm
 
-# 2. Gridding
-from .grids import Grids, GridDelta, GridRegular
-
-# 3. Property Calculation
-from .properties import Fluid
-# from .properties import cpres
-# from .properties import phaseg
-# from .properties import phaseo
-# from .properties import phasew
-from .properties import rperm
-from .properties import RRock
-
-# 4. Configuration
-from .configure import Well, Time
-
-# 5. Simulation
-from . import simulation
-
-from .simulation import BaseSolver
-
-# 6. Post-Processing
+from ._fluid import Fluid
+from ._rock import Rock
