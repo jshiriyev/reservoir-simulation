@@ -23,7 +23,7 @@ respy/properties/fluids/_fluid.py
 respy/properties/fluids/_single.py
 respy/properties/fluids/cpress/__init__.py
 respy/properties/fluids/cpress/_brooks_corey.py
-respy/properties/fluids/cpress/_jfunction.py
+respy/properties/fluids/cpress/_j_function.py
 respy/properties/fluids/cpress/_scan_curves.py
 respy/properties/fluids/cpress/_van_genuchten.py
 respy/properties/fluids/phaseg/GasProp.py

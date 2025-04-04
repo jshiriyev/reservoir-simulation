@@ -50,10 +50,10 @@ class StonesI():
         self.sor_go  = sor_go
         self.sgr     = sgr
 
-        self.k0rw = k0rw
+        self.k0rw    = k0rw
         self.k0ro_ow = k0ro_ow
         self.k0ro_go = k0ro_go
-        self.k0rg = k0rg
+        self.k0rg    = k0rg
 
         self.nw      = nw
         self.no_ow   = no_ow

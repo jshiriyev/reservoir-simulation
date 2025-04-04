@@ -1,67 +1,113 @@
+import numpy as np
+
 class BrooksCorey():
 
-    def __init__(self,irreducible=0,residual=0,lamda=2,entry=4.5):
+    def __init__(self,swr:float=0.,sor:float=0.,lamda:float=2.,entry:float=4.5):
         """
-        BrooksCorey capillary  pressure model
+        BrooksCorey capillary  pressure model.
 
-        irreducible     : Irreducible saturation
-        residual        : Residual saturation
+        Parameters:
+        ----------
+        swr     : irreducible water saturation
+        sor     : residual oil saturation
 
-        lamda           : Empirical model constant
-        entry           : Capillary entry pressure
+        lamda   : empirical model constant
+        entry   : capillary entry pressure
 
         """
-
-        self.irreducible = irreducible
-        self.residual = residual
+        self.swr = swr
+        self.sor = sor
 
         self.lamda = lamda
         self.entry = entry
 
-    def drainage(self,saturation):
-        """Calculates capillary pressure values for drainage
-        scenario, forward calculations."""
+    @property
+    def drain(self):
+        """Returns an instance of the Drainage class."""
+        return Drainage(self.swr,self.sor,self.lamda,self.entry)
 
-        saturation = numpy.asarray(saturation)
+    @property
+    def imbibe(self):
+        """Returns an instance of the Imbibition class."""
+        return Imbibition(self.swr,self.sor,self.lamda,self.entry)
 
-        Sstar = (saturation-self.irreducible)/(1-self.irreducible)
+class Drainage(BrooksCorey):
+    """
+    Drainage process in the Brooks-Corey model.
+    """
 
-        return self.entry*Sstar**(-1/self.lamda)
+    def __init__(self,*args,**kwargs):
 
-    def inverse_drainage(self,pressure):
-        """Calculates saturation values from capillary pressure for
-        drainage scenario, inverse calculations.
+        super().__init__(*args,**kwargs)
+
+    def pc(self,sw:np.ndarray):
+        """Calculates capillary pressure from saturation.
+
+        sw     : water saturation values
+
+        """
+        ss = (np.ravel(sw)-self.swr)/(1-self.swr)
+        ss = np.clip(ss,0,1)
+
+        return self.entry*ss**(-1/self.lamda)
+
+    def sw(self,pc:np.ndarray):
+        """Calculates saturation from capillary pressure, inverse calculations.
         
-        pressure     : capillary pressure values
+        pc     : capillary pressure values
 
         """
+        ss = (self.entry/np.ravel(pc))**(self.lamda)
 
-        pressure = numpy.asarray(pressure)
+        return self.swr+ss*(1-self.swr)
 
-        Sstar = (self.entry/pressure)**(self.lamda)
+class Imbibition(BrooksCorey):
+    """
+    Imbibition process in the Brooks-Corey model.
+    """
 
-        return self.irreducible+Sstar*(1-self.irreducible)
+    def __init__(self,*args,**kwargs):
 
-    def imbibition(self,saturation):
-        """Calculates capillary pressure values for imbibition scenario,
-        forward calculations."""
+        super().__init__(*args,**kwargs)
 
-        saturation = numpy.asarray(saturation)
+    def pc(self,sw:np.ndarray):
+        """Calculates capillary pressure from saturation.
 
-        Se = (saturation-self.irreducible)/(1-self.irreducible-self.residual)
-
-        return self.entry*(Se**(-1/self.lamda)-1)
-
-    def inverse_imbibition(self,pressure):
-        """Calculates saturation values for imbibition scenario,
-        inverse calculations.
-
-        pressure     : capillary pressure values
+        sw     : water saturation values
 
         """
+        se = (np.ravel(sw)-self.swr)/(1-self.swr-self.sor)
+        se = np.clip(se,0,1)
 
-        pressure = numpy.asarray(pressure)
+        return self.entry*(se**(-1/self.lamda)-1)
 
-        Se = (pressure/self.entry+1)**(-self.lamda)
+    def sw(self,pc:np.ndarray):
+        """Calculates saturation from capillary pressure, inverse calculations.
 
-        return self.irreducible+Se*(1-self.irreducible-self.residual)
+        pc     : capillary pressure values
+
+        """
+        se = (np.ravel(pc)/self.entry+1)**(-self.lamda)
+
+        return self.swr+se*(1-self.swr-self.sor)
+
+if __name__ == "__main__":
+
+    import matplotlib.pyplot as plt
+
+    ow = BrooksCorey(0.1,0.2,2,3.5)
+
+    sw = np.linspace(0,1,1000)
+
+    plt.semilogy(sw,ow.drain.pc(sw),label="Drainage Curve")
+    plt.semilogy(sw,ow.imbibe.pc(sw),label="Imbibition Curve")
+
+    plt.vlines(0.1,1e-3,1e3,'k',linestyle='--',linewidth=1.)
+    plt.vlines(0.8,1e-3,1e3,'k',linestyle='--',linewidth=1.)
+
+    plt.xlim((0,1.))
+    plt.ylim((1e-3,1e3))
+
+    plt.legend()
+
+    plt.show()
