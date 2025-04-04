@@ -1,9 +1,9 @@
-import numpy
+import numpy as np
 
 class Time():
 	"""Time class for the reservoir simulation"""
 
-	def __init__(self,steps:numpy.ndarray):
+	def __init__(self,steps:np.ndarray):
 		"""
 		Initializes the time settings for the simulator.
 		
@@ -23,7 +23,7 @@ class Time():
 	@steps.setter
 	def steps(self,value):
 		"""Setter for times steps"""
-		self._steps = numpy.asarray(value).flatten().astype(numpy.float64)*(24*60*60)
+		self._steps = np.asarray(value).flatten().astype(np.float64)*(24*60*60)
 
 	@property
 	def nums(self):
@@ -38,7 +38,7 @@ class Time():
 	@total.setter
 	def total(self,value):
 		"""Setter for the total simulation time"""
-		self._total = numpy.sum(self._steps)
+		self._total = np.sum(self._steps)
 
 	def __iter__(self):
 		"""
@@ -63,8 +63,34 @@ class Time():
 	@times.setter
 	def times(self,value):
 		"""Setter for times array"""
-		self._times = numpy.insert(numpy.cumsum(self._steps),0,0)
-    
+		self._times = np.insert(np.cumsum(self._steps),0,0)
+
+def bysteps(steps:np.ndarray) -> Time:
+	"""
+	Creates a Time instance with irregularly spaced time steps.
+
+	Parameters:
+        steps (array) : The size of time step for the simulation.
+
+    Returns:
+        Time : A Time object with regularly spaced time steps.
+
+	"""
+	return Time(np.asarray(steps))
+
+def regular(step:float,nums:int) -> Time:
+	"""
+	Creates a Time instance with regularly spaced time steps.
+
+    Parameters:
+        step (float) : The size of each time step.
+        nums (int) 	 : The number of time steps.
+
+    Returns:
+        Time : A Time object with regularly spaced time steps.
+
+	"""
+	return Time(np.full(nums,step))
 
 if __name__ == "__main__":
 

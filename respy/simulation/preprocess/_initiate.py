@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 class Initiate():
 
@@ -81,13 +81,13 @@ class Initiate():
 		returns water, oil and gas saturation values.
 
 		"""
-		depth = numpy.asarray(depth)
+		depth = np.asarray(depth)
 
-		Sw = numpy.ones(depth.shape)
-		So = numpy.zeros(depth.shape)
-		Sg = numpy.zeros(depth.shape)
+		Sw = np.ones(depth.shape)
+		So = np.zeros(depth.shape)
+		Sg = np.zeros(depth.shape)
 
-		zone2 = numpy.logical_and(depth<self.DWOC,depth>=self.DGOC)
+		zone2 = np.logical_and(depth<self.DWOC,depth>=self.DGOC)
 		zone3 = depth<self.DGOC
 
 		Sw2,So2 = self.saturations_water_oil_zone(
@@ -102,9 +102,9 @@ class Initiate():
 			depth[zone3],pcgw
 		)
 
-		Sw3 = numpy.zeros(Sw3a.shape)
-		So3 = numpy.zeros(So3a.shape)
-		Sg3 = numpy.zeros(Sg3b.shape)
+		Sw3 = np.zeros(Sw3a.shape)
+		So3 = np.zeros(So3a.shape)
+		Sg3 = np.zeros(Sg3b.shape)
 
 		Sw3[So3a>=0] = Sw3a[So3a>=0]
 		So3[So3a>=0] = So3a[So3a>=0]
@@ -134,7 +134,7 @@ class Initiate():
 		returns water and oil saturation values
 
 		"""
-		depth = numpy.asarray(depth)
+		depth = np.asarray(depth)
 
 		pw = self.wpress(depth)
 		po = self.opress(depth)
@@ -154,7 +154,7 @@ class Initiate():
 		returns water, oil, and gas saturation values.
 
 		"""
-		depth = numpy.asarray(depth)
+		depth = np.asarray(depth)
 
 		pw = self.wpress(depth)
 		po = self.opress(depth)
@@ -175,7 +175,7 @@ class Initiate():
 		returns water and gas saturation values.
 		
 		"""
-		depth = numpy.asarray(depth)
+		depth = np.asarray(depth)
 
 		pw = self.wpress(depth)
 		pg = self.gpress(depth)
