@@ -61,3 +61,22 @@ class Imbibition(VanGenuchten):
         se = ((self.gamma*pc)**self.n+1)**(-self.m)
 
         return self.swr+se*(1-self.swr-self.sor)
+
+if __name__ == "__main__":
+
+    import matplotlib.pyplot as plt
+
+    ow = VanGenuchten(0.1,0.2,2,2,3.5)
+
+    sw = np.linspace(0,1,1000)
+
+    plt.semilogy(sw,ow.im.pc(sw),label="Imbibition Curve")
+    
+    plt.vlines(0.1,1e-3,1e1,'k',linestyle='--',linewidth=1.)
+    plt.vlines(0.8,1e-3,1e1,'k',linestyle='--',linewidth=1.)
+
+    plt.xlim((0,1.))
+
+    plt.legend()
+
+    plt.show()

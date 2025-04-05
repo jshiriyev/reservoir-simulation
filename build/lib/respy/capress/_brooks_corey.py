@@ -105,3 +105,28 @@ class Imbibition(BrooksCorey):
         se = (np.ravel(pc)/self.entry+1)**(-self.lamda)
 
         return self.swr+se*(1-self.swr-self.sor)
+
+if __name__ == "__main__":
+
+    import matplotlib.pyplot as plt
+
+    ow = BrooksCorey(0.1,0.2,2,3.5)
+
+    sw = np.linspace(0,1,1000)
+
+    plt.semilogy(sw,ow.dr.pc(sw),label="Drainage Curve")
+    plt.semilogy(sw,ow.im.pc(sw),label="Imbibition Curve")
+
+    # print(ow.dr.jf(sw)(1,1,1))
+
+    print(ow.dr)
+
+    plt.vlines(0.1,1e-3,1e3,'k',linestyle='--',linewidth=1.)
+    plt.vlines(0.8,1e-3,1e3,'k',linestyle='--',linewidth=1.)
+
+    plt.xlim((0,1.))
+    plt.ylim((1e-3,1e3))
+
+    plt.legend()
+
+    plt.show()
