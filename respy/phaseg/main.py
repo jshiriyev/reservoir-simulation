@@ -125,8 +125,8 @@ class Gas():
             compressibility coefficient, and formation volume factor based on: 
 
         press   : Pressure values where to calculate gas properties, psi
-        """
 
+        """
         zfact,zprime = self.zfact(press)
 
         visc = self.visc(press,zfact)
