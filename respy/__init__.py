@@ -1,11 +1,18 @@
 # reservoir rock and fluid properties
 
+from . import block
+
+from . import phaseg
+from . import phaseo
+from . import phasew
+
 from . import capress
 from . import rperm
 
 from ._fluid import Fluid
 from ._layer import Layer
 
-from . import welly
-
-from ._well import Name,Slot,Well
+from ._builder import Builder, Filler
+from ._cuboid import Cuboid
+from ._block import Block, Mean
+from ._solver import BaseSolver
