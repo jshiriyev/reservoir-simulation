@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-	name = 'respy',
-	version = '0.0.59',
+	name = 'simpy',
+	version = '0.0.1',
 	packages = find_packages(),
 	install_requires = [
 		'numpy>=1.26.4',
@@ -14,7 +14,7 @@ setup(
 
 # python setup.py sdist bdist_wheel
 
-# pip install dist/respy-{version}-py3-none-any.whl
+# pip install dist/simpy-{version}-py3-none-any.whl
 
 # Run the followings from the command line to upload to pypi:
 
