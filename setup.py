@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-	name = 'simpy',
+	name = 'porsim',
 	version = '0.0.1',
 	packages = find_packages(),
 	install_requires = [
@@ -14,7 +14,7 @@ setup(
 
 # python setup.py sdist bdist_wheel
 
-# pip install dist/simpy-{version}-py3-none-any.whl
+# pip install dist/porsim-{version}-py3-none-any.whl
 
 # Run the followings from the command line to upload to pypi:
 
