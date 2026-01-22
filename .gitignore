@@ -1,16 +1,27 @@
-# Data
-*.csv
-*.db
-*.inc
-*.xlsx
-*.gif
-
-# Documentation
-*.html
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-.ipynb_checkpoints
+.ipynb_checkpoints/
+.git/
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.cache/
+.venv/
+venv/
+env/
+ENV/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
